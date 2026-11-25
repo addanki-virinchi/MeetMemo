@@ -8,11 +8,13 @@
 //
 // Inventory of callers (bundle anchor -> path/source -> destination):
 //   gn("/auth...") inside Za, aa("/auth") inside Vw .......... -> auth.html (sign in)
-//   gn(VAe) "View transcript list", aa(xte) .................. "/transcripts" -> auth.html (recent meetings)
+//   gn(VAe) "View transcript list" (panel Home), aa(xte) ...... "/transcripts" -> history.html (transcription history)
 //   gn("") share-link base / markdown check, aa("") / aa("/") . "" or "/" -> auth.html (local home)
 //   aa("/welcome...") after granting permissions ............. -> auth.html
 //   gn(`/transcripts/${hostedId}`) GDoc buttons, post-meeting . -> unavailable: hosted-transcript
-//   gn(jAe) "/settings", "/settings/general", "/settings/tags" -> unavailable: settings
+//   gn(jAe) "/settings", "/settings/general", "/settings/tags" -> settings.html (panel gear)
+//   YP "/help" (panel "?"), openHelp() for hard-coded help links -> help.html
+//   "/privacy", openPage("privacy") from the panel privacy popover -> privacy.html
 //   gn(KP) / gn("/billing") / aa(bte) Upgrade buttons ......... -> unavailable: billing
 //   aa(Ite) "/invite" ......................................... -> unavailable: invite
 //   anything else ............................................. -> unavailable: hosted
@@ -29,12 +31,14 @@
 
   function appUrl(path) {
     const p = String(path ?? '').split(/[?#]/)[0];
-    if (p === '' || p === '/' || p === '/auth' || p === '/transcripts' || p === '/welcome') return page('auth.html');
+    if (p === '' || p === '/' || p === '/auth' || p === '/welcome') return page('auth.html');
+    if (p === '/transcripts') return page('history.html');
     if (p.startsWith('/transcripts/')) return unavailable('hosted-transcript');
-    if (p === '/settings' || p.startsWith('/settings/')) return unavailable('settings');
+    if (p === '/settings' || p.startsWith('/settings/')) return page('settings.html');
+    if (p === '/privacy') return page('privacy.html');
     if (p === '/billing' || p.startsWith('/billing/')) return unavailable('billing');
     if (p === '/invite') return unavailable('invite');
-    if (p === '/help' || p.startsWith('/help/')) return unavailable('help');
+    if (p === '/help' || p.startsWith('/help/')) return page('help.html');
     return unavailable('hosted');
   }
 
@@ -62,12 +66,15 @@
     return send({ target: 'signin' });
   }
 
-  // Hard-coded help-site links in the bundles (help.MeetMemo.io, MeetMemo.io/help/...). Opened
-  // by the service worker so it also works where unavailable.html is not web-accessible.
-  function openHelp() {
-    send({ target: 'unavailable', feature: 'help' });
+  // Opens one of the extension's own pages (history, settings, help, privacy) in a new tab via
+  // the service worker, so it works from any context, including Meet pages.
+  const PAGES = ['history', 'settings', 'help', 'privacy'];
+  function openPage(name) {
+    if (PAGES.includes(name)) send({ target: 'page', page: name });
     return null;
   }
+  // Hard-coded help-site links in the bundles (help.MeetMemo.io, MeetMemo.io/help/...).
+  const openHelp = () => openPage('help');
 
-  self.MEETMEMO_LINKS = { appUrl, signIn, openHelp, HOSTED_ONLY_SOURCES };
+  self.MEETMEMO_LINKS = { appUrl, signIn, openPage, openHelp, PAGES, HOSTED_ONLY_SOURCES };
 })();

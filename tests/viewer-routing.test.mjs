@@ -73,11 +73,12 @@ function openViewer(browser, backend, query = '?id=m1') {
   const chromeApi = browser.chromeFor({ url: 'chrome-extension://ext/transcript.html' });
   const { provider, S } = providerFor(browser, chromeApi);
   const createApiClient = loadApiClient();
-  const { els, document } = fakeDom(['title', 'meta', 'copy', 'error', 'notice', 'segments']);
+  const { els, document } = fakeDom(['title', 'meta', 'copy', 'error', 'notice', 'segments', 'platform', 'download', 'print', 'translate-box', 'translate-to', 'translate-status']);
   const copied = [];
   const ctx = runModulePage('transcript.js', {
     chrome: chromeApi,
     MeetMemoSession: S,
+    MeetMemoFormat: runClassic(['ui/format.js'], { chrome: chromeApi }).MeetMemoFormat,
     document,
     location: { search: query },
     navigator: { clipboard: { writeText: async (t) => copied.push(t) } },
@@ -253,10 +254,10 @@ test('ROUTE-01: every inventoried destination maps explicitly', async () => {
   const { appUrl, signIn } = ctx.MEETMEMO_LINKS;
   const base = 'chrome-extension://ext/';
   const cases = {
-    '/auth?i=x': 'auth.html', '/transcripts': 'auth.html', '': 'auth.html', '/': 'auth.html', '/welcome': 'auth.html',
+    '/auth?i=x': 'auth.html', '/transcripts': 'history.html', '': 'auth.html', '/': 'auth.html', '/welcome': 'auth.html',
     '/transcripts/hosted123': 'unavailable.html?feature=hosted-transcript',
-    '/settings': 'unavailable.html?feature=settings', '/settings/tags': 'unavailable.html?feature=settings',
-    '/settings/general': 'unavailable.html?feature=settings',
+    '/settings': 'settings.html', '/settings/tags': 'settings.html', '/settings/general': 'settings.html',
+    '/help': 'help.html', '/privacy': 'privacy.html',
     '/billing': 'unavailable.html?feature=billing', '/invite': 'unavailable.html?feature=invite',
     '/something-new': 'unavailable.html?feature=hosted',
   };
@@ -291,6 +292,15 @@ test('ROUTE-01: worker opens the right page for each panel action', async () => 
   await tab.runtime.sendMessage({ type: 'meetmemo-open', target: 'unavailable', feature: 'billing' });
   await settle(20);
   assert.equal(browser.opened.at(-1).url, 'chrome-extension://ext/unavailable.html?feature=billing');
+  for (const page of ['history', 'settings', 'help', 'privacy']) {
+    await tab.runtime.sendMessage({ type: 'meetmemo-open', target: 'page', page });
+    await settle(20);
+    assert.deepEqual(browser.opened.at(-1), { kind: 'tab', url: `chrome-extension://ext/${page}.html`, index: 5, windowId: 9 });
+  }
+  const before = browser.opened.length;
+  await tab.runtime.sendMessage({ type: 'meetmemo-open', target: 'page', page: '../evil' });
+  await settle(20);
+  assert.equal(browser.opened.length, before, 'unknown pages are ignored');
 });
 
 test('ROUTE-01: bundle bridge anchors are present exactly once', () => {
@@ -327,7 +337,12 @@ test('ROUTE-01: bundle bridge anchors are present exactly once', () => {
   once(background, 'await chrome.tabs.create({url:chrome.runtime.getURL("auth.html")})');
   const manifest = JSON.parse(read('manifest.json'));
   const sync = manifest.content_scripts.find((c) => c.js.includes('sync/content.js'));
-  assert.deepEqual(sync.js, ['extension-auth/session.js', 'extension-auth/localBridge.js', 'extension-auth/links.js', 'sync/content.js']);
+  assert.deepEqual(sync.js, ['extension-auth/session.js', 'extension-auth/localBridge.js', 'extension-auth/links.js', 'extension-auth/panelPrivacy.js', 'sync/content.js']);
+  // Privacy popover and "Notify in chat" no longer point at the old hosted domain.
+  once(content, 'self.MEETMEMO_PANEL_PRIVACY?self.MEETMEMO_PANEL_PRIVACY.items(ye.default):');
+  assert.equal(content.split('MeetMemo.io/r/notetaking').length - 1, 0);
+  const war = manifest.web_accessible_resources.find((w) => w.resources.includes('auth.html'));
+  for (const p of ['history.html', 'settings.html', 'help.html', 'privacy.html']) assert.ok(war.resources.includes(p), p);
   assert.match(read('options.html'), /extension-auth\/links\.js"><\/script>\s*<script src="\/options\.js">/);
   // Only the Render API is a host permission; hosted MeetMemo hosts are blocked, never allowed.
   const apiHosts = manifest.host_permissions.filter((h) => !h.includes('meet.google.com'));
@@ -339,6 +354,67 @@ test('ROUTE-01: bundle bridge anchors are present exactly once', () => {
   assert.equal(rules[0].action.type, 'block');
   assert.equal(rules[0].condition.urlFilter, '||meetmemo.io^');
   assert.ok(rules[0].condition.resourceTypes.includes('main_frame'));
+  // Leftover analytics in the bundles (Mixpanel, Datadog) are blocked for the extension and the
+  // meeting pages only, never for the rest of the user's browsing.
+  const analytics = rules.find((r) => r.id === 2);
+  assert.equal(analytics.action.type, 'block');
+  assert.deepEqual(analytics.condition.requestDomains, ['mixpanel.com', 'browser-intake-datadoghq.com']);
+  assert.ok(analytics.condition.initiatorDomains.includes('gnolicpkknhchlmmfgamghnjcbmpndlf'));
+  assert.ok(analytics.condition.initiatorDomains.includes('meet.google.com'));
+});
+
+test('PAGES-01: new pages reference files that exist and share one stylesheet', () => {
+  for (const page of ['history.html', 'transcript.html', 'settings.html', 'help.html', 'privacy.html', 'unavailable.html']) {
+    const html = read(page);
+    assert.match(html, /href="ui\/pages\.css"/, page);
+    for (const [, src] of html.matchAll(/(?:src|href)="([^"#:]+\.(?:js|css|png|svg|html))"/g)) {
+      assert.doesNotThrow(() => read(src), `${page} -> ${src}`);
+    }
+    assert.doesNotMatch(html, /meetmemo\.io/i, `${page} links to the old hosted domain`);
+  }
+});
+
+test('FORMAT-01: meeting headings, durations and preferences', async () => {
+  const browser = createBrowser();
+  const F = runClassic(['ui/format.js'], { chrome: browser.chromeFor() }).MeetMemoFormat;
+  const auto = F.meetingHeading({ platform: 'googlemeet', meetingCode: 'abc-defg-hij', title: 'Google Meet abc-defg-hij — 11/25/2026, 10:55:39 AM' });
+  assert.deepEqual({ ...auto }, { platform: 'Google Meet', code: 'abc-defg-hij', title: 'abc-defg-hij', isCustom: false });
+  const custom = F.meetingHeading({ platform: 'googlemeet', meetingCode: 'abc-defg-hij', title: 'Weekly sync' });
+  assert.equal(custom.title, 'Weekly sync');
+  assert.equal(custom.isCustom, true);
+  assert.equal(F.meetingHeading({}).title, 'Untitled meeting');
+  assert.equal(F.duration(30_000), 'under 1 min');
+  assert.equal(F.duration(42 * 60_000), '42 min');
+  assert.equal(F.duration(125 * 60_000), '2 h 5 min');
+  assert.equal(F.initials('Ada Lovelace'), 'AL');
+  assert.equal(F.speakerSlot('Ada'), F.speakerSlot('Ada'));
+  assert.equal(F.toDate({ _seconds: 0 }).getTime(), 0);
+  assert.equal(F.toDate('garbage'), null);
+  assert.deepEqual({ ...(await F.getPrefs()) }, { readingLanguage: '', aiLanguage: '' });
+  await F.setPrefs({ readingLanguage: 'hi' });
+  assert.equal((await F.getPrefs()).readingLanguage, 'hi');
+  assert.equal((await F.getPrefs()).aiLanguage, '');
+});
+
+test('PRIVACY-01: panel privacy popover renders accurate answers and links to privacy.html', async () => {
+  const browser = createBrowser();
+  const chromeApi = browser.chromeFor();
+  const sent = [];
+  chromeApi.runtime.sendMessage = async (m) => { sent.push(structuredClone(m)); };
+  const ctx = runClassic(['extension-auth/links.js', 'extension-auth/panelPrivacy.js'], { chrome: chromeApi });
+  const h = (type, props, ...children) => ({ type, props: props || {}, children });
+  const React = { createElement: h, Fragment: 'Fragment' };
+  const tree = ctx.MEETMEMO_PANEL_PRIVACY.items(React);
+  assert.equal(tree.type, 'Fragment');
+  const flat = (n) => (typeof n === 'string' ? n : (n.children || []).map(flat).join(' '));
+  const text = flat(tree);
+  assert.match(text, /never records audio or video/);
+  assert.match(text, /Only you/);
+  assert.doesNotMatch(text, /meetmemo\.io/i);
+  assert.deepEqual(tree.children.map((c) => c.type), ['dd', 'dt', 'dd', 'dt', 'dd', 'dd']);
+  const button = tree.children.at(-1).children[0];
+  button.props.onClick();
+  assert.deepEqual(sent, [{ type: 'meetmemo-open', target: 'page', page: 'privacy' }]);
 });
 
 test('ROUTE-02: help links and Ask AI (signed in locally) open local explanation pages', async () => {
@@ -347,12 +423,12 @@ test('ROUTE-02: help links and Ask AI (signed in locally) open local explanation
   const sent = [];
   chromeApi.runtime.sendMessage = async (m) => { sent.push(structuredClone(m)); }; // clone out of the VM realm
   const L = runClassic(['extension-auth/links.js'], { chrome: chromeApi }).MEETMEMO_LINKS;
-  assert.equal(L.appUrl('/help'), 'chrome-extension://ext/unavailable.html?feature=help');
+  assert.equal(L.appUrl('/help'), 'chrome-extension://ext/help.html');
   L.openHelp();
   L.signIn('ask-ai');
   L.signIn('must-relogin-popover');
   assert.deepEqual(sent, [
-    { type: 'meetmemo-open', target: 'unavailable', feature: 'help' },
+    { type: 'meetmemo-open', target: 'page', page: 'help' },
     { type: 'meetmemo-open', target: 'unavailable', feature: 'ai' },
     { type: 'meetmemo-open', target: 'signin' },
   ]);

@@ -10,8 +10,14 @@ of this repo, so the extension uses a local auth + sync layer instead:
 | File | Role |
 | --- | --- |
 | `auth.html` / `auth.js` | Toolbar popup: sign in, create account, profile-setup errors with Retry, per-meeting sync status, recent meetings (Show more) |
-| `transcript.html` / `transcript.js` | Private, read-only view of a saved transcript (all pages; follows sign-in changes; `?live=1` follows saving) |
-| `unavailable.html` / `unavailable.js` | Explains hosted-only features (billing, hosted settings, screenshots, …) that this build does not provide |
+| `history.html` / `history.js` | Transcription history: meetings grouped by day with title/code, date, time, duration and a short preview; search, open, delete |
+| `transcript.html` / `transcript.js` | Private, read-only transcript reader (all pages; follows sign-in changes; `?live=1` follows saving). Copy, download .txt, print/PDF, and on-device "Read in" translation via Chrome's built-in `Translator` (never changes the saved text) |
+| `settings.html` / `settings.js` | Account, transcription-language guidance, reading language, Ask AI answer language (saved for later), data links, server check. Prefs in `chrome.storage.local.meetmemo_prefs` |
+| `help.html` / `help.js` | Getting started, panel controls, languages, troubleshooting, copyable diagnostics (no transcript text or tokens) |
+| `privacy.html` | What is saved, where, who can see it, retention and deletion |
+| `ui/pages.css`, `ui/format.js` | Shared styles (light/dark, print) and display helpers + preferences for the pages above |
+| `extension-auth/panelPrivacy.js` | Content of the panel's Privacy (shield) popover |
+| `unavailable.html` / `unavailable.js` | Explains features this version does not provide (billing, screenshots, Ask AI "coming soon", …) |
 | `extension-auth/session.js` | Shared identity helpers: `subscribe` (cross-context login/logout/switch), `toUser` (no tokens), `statusFor`, capabilities |
 | `extension-auth/sessionAuthority.js` | Service worker only: the single writer of the session (login commit, logout, token refresh, profile state) |
 | `extension-auth/manualAuthProvider.js` | Page-side provider (email/password and Google sign-in via the backend `/v1/auth` routes); talks to the authority over the `meetmemo-auth` port |
@@ -71,6 +77,8 @@ After editing extension files, press **Reload** on `chrome://extensions` and ref
   `help.MeetMemo.io`). They are never navigated to: the install tab opens `auth.html` (was
   `api2.MeetMemo.io/api/2/u/welcome/…`), the uninstall URL is cleared (was
   `api2.MeetMemo.io/api/2/u/uninstall/…`), and help links open `unavailable.html?feature=help`.
+* The same ruleset blocks the bundles' leftover analytics (`mixpanel.com`, `browser-intake-datadoghq.com`), but only
+  for requests made by the extension itself or by Meet/Teams/Zoom pages, never the rest of the browser.
 * As a safety net, the static ruleset `rules/block-hosted.json` blocks every request to
   `meetmemo.io` and its subdomains, including page navigations.
 
@@ -115,8 +123,10 @@ After editing extension files, press **Reload** on `chrome://extensions` and ref
 | --- | --- |
 | Sign In (header, banner, relogin/sign-up popovers) | `auth.html` sign-in window |
 | Share | This meeting's private transcript (`transcript.html?id=…&live=1`) after pending lines are durably queued; the sign-in window if signed out. Tooltip relabelled in `lang/en.json` (`juDfTR`) |
-| View transcript list | `auth.html` (Recent meetings) |
-| Settings / tags / notifications | `unavailable.html?feature=settings` |
+| Home (View transcript list) | `history.html` |
+| Settings (gear) / tags / notifications | `settings.html` |
+| Help (?) and hard-coded help links | `help.html` |
+| Privacy (shield) popover | Local answers from `panelPrivacy.js`; "Read the full privacy information" opens `privacy.html` |
 | Upgrade / billing | `unavailable.html?feature=billing` |
 | Screenshot buttons | `unavailable.html?feature=screenshots` |
 | Hosted transcript links (`/transcripts/<hostedId>`) | `unavailable.html?feature=hosted-transcript` |
@@ -137,6 +147,8 @@ The production bundles are edited only at these anchors. Each is present exactly
     `MEETMEMO_LOCAL_AUTH.hostedPrompt`, which renders nothing while a local account is signed in.
   * Both Ask AI `n($L())` calls route to `MEETMEMO_LINKS.signIn("ask-ai")` when signed in locally.
   * `var YP=` and the hosted help `window.open(...)` calls use `MEETMEMO_LINKS.appUrl("/help")` / `openHelp()`.
+  * The privacy popover's `o2I5Fb` `<dd>` is replaced by `MEETMEMO_PANEL_PRIVACY.items(ye.default)`; the "Notify in chat"
+    message no longer contains a `MeetMemo.io` link.
 * `background.js`: the install welcome tab opens `auth.html`; `setUninstallURL("")`.
 * `options.js`:
   * `function Vw(e){` and `function aa(e){` use the same routing.

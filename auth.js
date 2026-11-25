@@ -186,10 +186,11 @@ function appendMeetings(items) {
     a.target = '_blank';
     const title = document.createElement('span');
     title.className = 'title';
-    title.textContent = m.title || 'Untitled meeting';
+    const heading = self.MeetMemoFormat?.meetingHeading(m);
+    title.textContent = heading ? (heading.isCustom ? heading.title : `${heading.platform} · ${heading.title}`) : (m.title || 'Untitled meeting');
     const meta = document.createElement('span');
     meta.className = 'muted small';
-    meta.textContent = toDate(m.createdAt)?.toLocaleString() ?? '';
+    meta.textContent = toDate(m.createdAt)?.toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' }) ?? '';
     a.append(title, meta);
     const li = document.createElement('li');
     li.append(a);
@@ -268,7 +269,11 @@ $('google-signin').addEventListener('click', async () => {
   }
 });
 $('sign-out').addEventListener('click', () => auth.signOut().catch((e) => alert(friendlyError(e))));
-$('open-options').addEventListener('click', () => chrome.runtime.openOptionsPage());
+const openPage = (name) => chrome.tabs.create({ url: chrome.runtime.getURL(`${name}.html`) });
+$('open-options').addEventListener('click', () => openPage('settings'));
+$('open-help').addEventListener('click', () => openPage('help'));
+$('open-privacy').addEventListener('click', () => openPage('privacy'));
+$('open-history').addEventListener('click', () => openPage('history'));
 $('profile-retry').addEventListener('click', () => setupProfile(currentUser));
 $('meetings-more').addEventListener('click', () => loadMeetings({ more: true }));
 

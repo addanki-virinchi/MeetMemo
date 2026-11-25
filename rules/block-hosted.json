@@ -19,5 +19,21 @@
     "other"
    ]
   }
+ },
+ {
+  "id": 2,
+  "priority": 1,
+  "action": { "type": "block" },
+  "condition": {
+   "requestDomains": ["mixpanel.com", "browser-intake-datadoghq.com"],
+   "initiatorDomains": [
+    "gnolicpkknhchlmmfgamghnjcbmpndlf",
+    "meet.google.com",
+    "teams.microsoft.com",
+    "teams.live.com",
+    "zoom.us"
+   ],
+   "resourceTypes": ["xmlhttprequest", "ping", "script", "image", "other"]
+  }
  }
 ]

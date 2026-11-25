@@ -1,0 +1,128 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Settings · MeetMemo</title>
+  <link rel="icon" href="favicon-32.png">
+  <link rel="stylesheet" href="ui/pages.css">
+  <script src="meetmemo.config.js"></script>
+  <script src="ui/format.js"></script>
+  <script type="module" src="settings.js"></script>
+</head>
+<body class="app">
+  <header class="topnav">
+    <div class="inner">
+      <a class="brand" href="history.html"><img src="logo-48.png" alt="">MeetMemo</a>
+      <nav aria-label="Main">
+        <a href="history.html">Meetings</a>
+        <a href="settings.html" aria-current="page">Settings</a>
+        <a href="help.html">Help</a>
+        <a href="privacy.html">Privacy</a>
+      </nav>
+      <span class="who" id="nav-who"></span>
+    </div>
+  </header>
+
+  <main class="container narrow">
+    <div class="page-header">
+      <div>
+        <p class="eyebrow">Preferences</p>
+        <h1 class="page-title">Settings</h1>
+        <p class="page-sub">Changes are saved automatically on this browser.</p>
+      </div>
+    </div>
+
+    <section class="card settings-section" aria-labelledby="h-account">
+      <h2 id="h-account">Account</h2>
+      <p>Transcripts are saved to this account and are visible only to you.</p>
+      <div class="setting-row">
+        <div>
+          <div class="label" id="account-name">Not signed in</div>
+          <div class="hint" id="account-email">Sign in to save Google Meet transcripts.</div>
+        </div>
+        <div>
+          <button type="button" class="btn" id="sign-in">Sign in</button>
+          <button type="button" class="btn" id="sign-out" hidden>Sign out</button>
+        </div>
+      </div>
+    </section>
+
+    <section class="card settings-section" aria-labelledby="h-transcription">
+      <h2 id="h-transcription">Transcription language</h2>
+      <p>MeetMemo saves Google Meet's live captions in the language that is being spoken. It does not translate while you record.</p>
+      <div class="setting-row">
+        <div>
+          <div class="label">Language of the meeting</div>
+          <div class="hint">Set it during the call: in the MeetMemo panel, select <strong>Change</strong> next to “Transcribing: …”. This switches Google Meet's caption language, so pick the language people are actually speaking. Google Meet supports many languages, including English, Spanish, French, German, Portuguese, Hindi, Japanese and Korean.</div>
+        </div>
+        <a class="btn" href="help.html#languages">Learn more</a>
+      </div>
+    </section>
+
+    <section class="card settings-section" aria-labelledby="h-reading">
+      <h2 id="h-reading">Reading and translation</h2>
+      <p>Read a saved transcript in another language after the meeting. Translation runs on this device with Chrome's built-in translator; your saved transcript is never changed.</p>
+      <div class="setting-row">
+        <div>
+          <label class="label" for="reading-language">Reading language</label>
+          <div class="hint" id="translator-support">Checking whether this browser can translate…</div>
+        </div>
+        <select class="input" id="reading-language"></select>
+      </div>
+    </section>
+
+    <section class="card settings-section" aria-labelledby="h-ai">
+      <h2 id="h-ai">Ask MeetMemo AI <span class="badge">Coming soon</span></h2>
+      <p>Ask questions about a meeting, get summaries and action items. Your choice here is saved and will be used when the feature launches.</p>
+      <div class="setting-row">
+        <div>
+          <label class="label" for="ai-language">Answer language</label>
+          <div class="hint">The language AI answers and summaries are written in.</div>
+        </div>
+        <select class="input" id="ai-language"></select>
+      </div>
+    </section>
+
+    <section class="card settings-section" aria-labelledby="h-data">
+      <h2 id="h-data">Your data</h2>
+      <p>Manage what MeetMemo keeps.</p>
+      <div class="setting-row">
+        <div>
+          <div class="label">Saved meetings</div>
+          <div class="hint">Open, download or permanently delete any saved transcript.</div>
+        </div>
+        <a class="btn" href="history.html">Manage meetings</a>
+      </div>
+      <div class="setting-row">
+        <div>
+          <div class="label">How your data is handled</div>
+          <div class="hint">What is saved, where it is stored and who can see it.</div>
+        </div>
+        <a class="btn" href="privacy.html">Privacy information</a>
+      </div>
+    </section>
+
+    <section class="card settings-section" aria-labelledby="h-advanced">
+      <h2 id="h-advanced">Advanced</h2>
+      <p>Connection details, useful when troubleshooting.</p>
+      <div class="setting-row">
+        <div>
+          <div class="label">MeetMemo server</div>
+          <div class="hint"><code id="api-url"></code> · <span id="server-status">Not checked yet</span></div>
+        </div>
+        <button type="button" class="btn" id="check-server">Check connection</button>
+      </div>
+      <div class="setting-row">
+        <div>
+          <div class="label">Panel options</div>
+          <div class="hint">The in-meeting panel's own display options.</div>
+        </div>
+        <a class="btn" href="options.html" target="_blank">Open panel options</a>
+      </div>
+    </section>
+
+    <p class="saved-flash" id="saved" aria-live="polite"></p>
+  </main>
+</body>
+</html>

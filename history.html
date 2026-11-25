@@ -1,0 +1,74 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Meetings · MeetMemo</title>
+  <link rel="icon" href="favicon-32.png">
+  <link rel="stylesheet" href="ui/pages.css">
+  <script src="meetmemo.config.js"></script>
+  <script src="ui/format.js"></script>
+  <script type="module" src="history.js"></script>
+</head>
+<body class="app">
+  <header class="topnav">
+    <div class="inner">
+      <a class="brand" href="history.html"><img src="logo-48.png" alt="">MeetMemo</a>
+      <nav aria-label="Main">
+        <a href="history.html" aria-current="page">Meetings</a>
+        <a href="settings.html">Settings</a>
+        <a href="help.html">Help</a>
+        <a href="privacy.html">Privacy</a>
+      </nav>
+      <span class="who" id="nav-who"></span>
+    </div>
+  </header>
+
+  <main class="container">
+    <div class="page-header">
+      <div>
+        <p class="eyebrow">Transcription history</p>
+        <h1 class="page-title">Meetings</h1>
+        <p class="page-sub" id="subtitle">Every meeting MeetMemo saved to your account, newest first.</p>
+      </div>
+      <label class="search" id="search-wrap" hidden>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+        <input class="input" id="search" type="search" placeholder="Search meetings" aria-label="Search meetings by code, title or text">
+      </label>
+    </div>
+
+    <p id="backend-warning" class="notice warn" hidden>
+      The MeetMemo server is not responding yet. If it was idle it can take up to a minute to wake up; this page retries on its own.
+    </p>
+    <p id="error" class="notice error" hidden></p>
+
+    <section id="view-loading" aria-busy="true">
+      <div class="meeting-list">
+        <div class="card meeting-card"><div class="head"><span class="skeleton" style="width:30%"></span><span class="skeleton" style="width:55%;height:16px"></span><span class="skeleton" style="width:40%"></span></div></div>
+        <div class="card meeting-card"><div class="head"><span class="skeleton" style="width:25%"></span><span class="skeleton" style="width:48%;height:16px"></span><span class="skeleton" style="width:36%"></span></div></div>
+      </div>
+    </section>
+
+    <section id="view-signed-out" class="card empty" hidden>
+      <span class="mark"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="4" y="10" width="16" height="10" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg></span>
+      <h2>Sign in to see your meetings</h2>
+      <p>Your transcripts are private to your MeetMemo account. Sign in to view, open and manage them.</p>
+      <button type="button" class="btn primary" id="sign-in">Sign in</button>
+    </section>
+
+    <section id="view-empty" class="card empty" hidden>
+      <span class="mark"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M4 5h16v11H8l-4 4z"/></svg></span>
+      <h2>No meetings yet</h2>
+      <p>Join a Google Meet call with the MeetMemo panel open. Captions are saved to your account every few seconds and appear here.</p>
+      <a class="btn" href="help.html#getting-started">How it works</a>
+    </section>
+
+    <section id="view-list" hidden>
+      <p class="count-line" id="count-line"></p>
+      <div id="groups"></div>
+      <p id="no-results" class="notice" hidden>No loaded meetings match your search.</p>
+      <div class="list-footer"><button type="button" class="btn" id="more" hidden>Load older meetings</button></div>
+    </section>
+  </main>
+</body>
+</html>

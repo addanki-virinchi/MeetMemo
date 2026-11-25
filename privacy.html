@@ -1,0 +1,89 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Privacy · MeetMemo</title>
+  <link rel="icon" href="favicon-32.png">
+  <link rel="stylesheet" href="ui/pages.css">
+</head>
+<body class="app">
+  <header class="topnav">
+    <div class="inner">
+      <a class="brand" href="history.html"><img src="logo-48.png" alt="">MeetMemo</a>
+      <nav aria-label="Main">
+        <a href="history.html">Meetings</a>
+        <a href="settings.html">Settings</a>
+        <a href="help.html">Help</a>
+        <a href="privacy.html" aria-current="page">Privacy</a>
+      </nav>
+    </div>
+  </header>
+
+  <main class="container narrow">
+    <div class="page-header">
+      <div>
+        <p class="eyebrow">Privacy</p>
+        <h1 class="page-title">How MeetMemo handles your meetings</h1>
+        <p class="page-sub">What is saved, where it goes, who can see it, and how to remove it.</p>
+      </div>
+    </div>
+
+    <div class="summary-grid">
+      <div class="card"><h3>Text only</h3><p>MeetMemo saves caption text. It never records audio, video or your screen.</p></div>
+      <div class="card"><h3>Private to you</h3><p>Every transcript belongs to your account. No one else can open it, and there are no public links.</p></div>
+      <div class="card"><h3>You're in control</h3><p>Pause any time. Delete any meeting permanently from Meetings.</p></div>
+      <div class="card"><h3>No tracking</h3><p>No analytics or advertising trackers. Your transcripts are not sold or shared.</p></div>
+    </div>
+
+    <article class="prose">
+      <h2 id="what">What MeetMemo saves</h2>
+      <p>While you are signed in and a Google Meet call is open with MeetMemo running, MeetMemo saves:</p>
+      <ul>
+        <li><strong>Transcript lines:</strong> the text of Google Meet's live captions, the speaker name as Google Meet shows it, and the time each line was spoken.</li>
+        <li><strong>Meeting details:</strong> the meeting code (for example <code>abc-defg-hij</code>), the platform, and when the meeting started and was last saved.</li>
+        <li><strong>Your account:</strong> your name, email address and profile picture link from sign-in, plus when you last signed in.</li>
+      </ul>
+      <h3>What MeetMemo does not save</h3>
+      <ul>
+        <li>Audio or video of the meeting, or anything on screen. Screenshots are not available.</li>
+        <li>Meeting chat messages.</li>
+        <li>Anything said while the panel is <strong>paused</strong>.</li>
+        <li>Your password. Passwords go directly to Google's Firebase Authentication service, and MeetMemo never stores them.</li>
+      </ul>
+      <p>The captions themselves are produced by Google Meet, under Google's terms, whether or not MeetMemo is installed. MeetMemo reads the captions Meet already shows you.</p>
+
+      <h2 id="where">Where your data is stored</h2>
+      <ul>
+        <li><strong>MeetMemo server:</strong> transcripts are sent over an encrypted (HTTPS) connection to the MeetMemo service, which is hosted on Render.</li>
+        <li><strong>Database:</strong> the server stores them in Google Cloud Firestore, which encrypts data at rest. The database refuses every direct connection; only the MeetMemo server can read or write it.</li>
+        <li><strong>On your computer:</strong> lines waiting to be uploaded are kept briefly in your browser's extension storage, so nothing is lost if the connection drops. Lines are removed from your computer once saved. Lines waiting for a different account to sign in are kept for up to 7 days. Your sign-in session is also stored in the browser.</li>
+      </ul>
+
+      <h2 id="who">Who can see your transcripts</h2>
+      <p>Only you. Every request is checked against your signed-in account: another user who guessed a meeting ID would get “not found”. MeetMemo has no public share links. When you choose <strong>Share</strong>, the transcript opens for you, and you decide what to copy, download or send.</p>
+      <p>Server logs record technical errors, never transcript text.</p>
+
+      <h2 id="translation">Translation and AI</h2>
+      <p><strong>Read in</strong> translation runs on your own device with Chrome's built-in translator. Your text is not sent to MeetMemo or anyone else to be translated.</p>
+      <p>Ask MeetMemo AI is not available yet. Before it launches, this page will explain exactly what it sends and where.</p>
+
+      <h2 id="tracking">Analytics and tracking</h2>
+      <p>MeetMemo does not use analytics or advertising trackers. The meeting panel contains older analytics code from the product it was built on; this version blocks that code from sending anything.</p>
+
+      <h2 id="consent">Telling participants</h2>
+      <p>Let people know when you transcribe a meeting; in many places the law requires it. In the panel, open the <strong>Privacy</strong> (shield) menu and select <strong>Notify in chat</strong> to post a short notice in the meeting chat.</p>
+
+      <h2 id="retention">How long data is kept, and deleting it</h2>
+      <ul>
+        <li>Transcripts are kept until you delete them.</li>
+        <li><strong>Delete a meeting:</strong> in <a href="history.html">Meetings</a>, select the bin icon. The meeting and every line of its transcript are removed from the server immediately and cannot be recovered.</li>
+        <li><strong>Sign out:</strong> removes your session from this browser. Your saved transcripts stay in your account.</li>
+        <li><strong>Remove everything:</strong> delete your meetings, then ask your MeetMemo administrator to delete your account.</li>
+      </ul>
+    </article>
+
+    <p class="footer-note">Questions about privacy? See <a href="help.html#support">Help</a>.</p>
+  </main>
+</body>
+</html>

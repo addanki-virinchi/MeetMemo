@@ -2,21 +2,54 @@
 <html lang="en">
 <head>
   <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Transcript · MeetMemo</title>
-  <link rel="stylesheet" href="auth.css">
+  <link rel="icon" href="favicon-32.png">
+  <link rel="stylesheet" href="ui/pages.css">
   <script src="meetmemo.config.js"></script>
+  <script src="ui/format.js"></script>
   <script type="module" src="transcript.js"></script>
 </head>
-<body class="page">
-  <div class="page-head">
-    <div>
-      <h1 id="title">Loading…</h1>
-      <div id="meta" class="muted small"></div>
+<body class="app">
+  <header class="topnav">
+    <div class="inner">
+      <a class="brand" href="history.html"><img src="logo-48.png" alt="">MeetMemo</a>
+      <nav aria-label="Main">
+        <a href="history.html">Meetings</a>
+        <a href="settings.html">Settings</a>
+        <a href="help.html">Help</a>
+        <a href="privacy.html">Privacy</a>
+      </nav>
     </div>
-    <button type="button" id="copy" class="link" hidden>Copy text</button>
-  </div>
-  <p id="error" class="notice notice-error" hidden></p>
-  <p id="notice" class="notice muted small" hidden></p>
-  <div id="segments"></div>
+  </header>
+
+  <main class="container narrow">
+    <a class="back" href="history.html">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="m15 18-6-6 6-6"/></svg>
+      All meetings
+    </a>
+
+    <div class="reader-head">
+      <p class="eyebrow" id="platform"></p>
+      <h1 id="title">Loading…</h1>
+      <div id="meta" class="reader-meta"></div>
+    </div>
+
+    <div class="toolbar" id="toolbar">
+      <button type="button" id="copy" class="btn small" hidden>Copy text</button>
+      <button type="button" id="download" class="btn small" hidden>Download .txt</button>
+      <button type="button" id="print" class="btn small" hidden>Print or save as PDF</button>
+      <span class="spacer"></span>
+      <span class="translate" id="translate-box" hidden>
+        <label for="translate-to">Read in</label>
+        <select id="translate-to" class="input"></select>
+      </span>
+      <span class="status" id="translate-status" aria-live="polite"></span>
+    </div>
+
+    <p id="error" class="notice error" hidden></p>
+    <p id="notice" class="notice" hidden></p>
+    <div id="segments"></div>
+  </main>
 </body>
 </html>

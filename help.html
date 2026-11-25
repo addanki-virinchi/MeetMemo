@@ -1,0 +1,128 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Help · MeetMemo</title>
+  <link rel="icon" href="favicon-32.png">
+  <link rel="stylesheet" href="ui/pages.css">
+  <script src="meetmemo.config.js"></script>
+  <script src="help.js" defer></script>
+</head>
+<body class="app">
+  <header class="topnav">
+    <div class="inner">
+      <a class="brand" href="history.html"><img src="logo-48.png" alt="">MeetMemo</a>
+      <nav aria-label="Main">
+        <a href="history.html">Meetings</a>
+        <a href="settings.html">Settings</a>
+        <a href="help.html" aria-current="page">Help</a>
+        <a href="privacy.html">Privacy</a>
+      </nav>
+    </div>
+  </header>
+
+  <main class="container narrow">
+    <div class="page-header">
+      <div>
+        <p class="eyebrow">Help center</p>
+        <h1 class="page-title">Get help with MeetMemo</h1>
+        <p class="page-sub">Everything you need to record, read and manage your meeting transcripts.</p>
+      </div>
+    </div>
+
+    <nav class="toc" aria-label="On this page">
+      <a href="#getting-started">Getting started</a>
+      <a href="#panel">The meeting panel</a>
+      <a href="#languages">Languages</a>
+      <a href="#transcripts">Your transcripts</a>
+      <a href="#troubleshooting">Troubleshooting</a>
+      <a href="#support">Still stuck?</a>
+    </nav>
+
+    <article class="prose">
+      <h2 id="getting-started">Getting started</h2>
+      <ol>
+        <li><strong>Sign in.</strong> Click the MeetMemo icon in the Chrome toolbar and sign in with Google or with your email and password.</li>
+        <li><strong>Join a Google Meet call.</strong> The MeetMemo panel opens on the right side of the meeting.</li>
+        <li><strong>Let people talk.</strong> MeetMemo uses Google Meet's live captions. The transcript appears in the panel and is saved to your account every few seconds.</li>
+        <li><strong>Read it later.</strong> Open <a href="history.html">Meetings</a> (or the <strong>Home</strong> button in the panel) to find every saved meeting.</li>
+      </ol>
+      <p>You don't need to keep the panel visible. Minimise it and MeetMemo keeps saving in the background while the meeting tab is open.</p>
+
+      <h2 id="panel">The meeting panel</h2>
+      <table class="controls">
+        <thead><tr><th scope="col">Control</th><th scope="col">What it does</th></tr></thead>
+        <tbody>
+          <tr><td>Home</td><td>Opens your transcription history: every meeting saved to your account.</td></tr>
+          <tr><td>Pause / Resume</td><td>Stops saving while paused. Anything said while paused is not added to your transcript. Resume to continue.</td></tr>
+          <tr><td>Share</td><td>Opens this meeting's saved transcript in a new tab while the meeting continues. From there you can copy it, download it as a text file, or save it as a PDF to send to others. Transcripts are private, so there is no public link.</td></tr>
+          <tr><td>Change (language)</td><td>Changes the language Google Meet captions in. See <a href="#languages">Languages</a>.</td></tr>
+          <tr><td>Privacy (shield)</td><td>Shows how your transcript is handled and lets you tell participants you are transcribing.</td></tr>
+          <tr><td>Settings (gear)</td><td>Opens MeetMemo settings: account, reading language and more.</td></tr>
+          <tr><td>Ask MeetMemo AI</td><td>Coming soon: questions, summaries and action items for your meetings.</td></tr>
+          <tr><td>Screenshot</td><td>Not available in this version. MeetMemo saves caption text only.</td></tr>
+        </tbody>
+      </table>
+
+      <h2 id="languages">Languages</h2>
+      <p>MeetMemo saves exactly what Google Meet captions, in the language being spoken. It does <strong>not</strong> translate while recording: a meeting held in Spanish is saved in Spanish.</p>
+      <h3>Transcribing a meeting in another language</h3>
+      <p>During the call, select <strong>Change</strong> next to “Transcribing: …” at the top of the panel and choose the language people are speaking. This sets Google Meet's caption language for you. Choosing the wrong language produces poor captions, so match the spoken language. If the language changes partway through the meeting, change it again.</p>
+      <h3>Reading a transcript in your language</h3>
+      <p>After the meeting, open the transcript and use <strong>Read in</strong> to translate it for reading. This works in Chrome 138 or later and runs entirely on your device. Set a default in <a href="settings.html">Settings → Reading language</a>. The saved transcript always stays in its original language.</p>
+
+      <h2 id="transcripts">Your transcripts</h2>
+      <ul>
+        <li><strong>Find a meeting:</strong> <a href="history.html">Meetings</a> lists everything newest first, grouped by day. Search by meeting code, title or the words in the preview.</li>
+        <li><strong>Copy, download or print:</strong> open a transcript and use the buttons above the text. “Print or save as PDF” produces a clean document for sharing.</li>
+        <li><strong>Delete:</strong> use the bin icon next to a meeting. Deletion is permanent and removes every line of that transcript from the server.</li>
+      </ul>
+
+      <h2 id="troubleshooting">Troubleshooting</h2>
+      <details class="faq">
+        <summary>The panel asks me to sign in, but I'm already signed in</summary>
+        <div class="answer"><p>Refresh the Google Meet tab. If the prompt stays, click the MeetMemo toolbar icon to confirm you are signed in. AI features show a separate “coming soon” message, which is expected.</p></div>
+      </details>
+      <details class="faq">
+        <summary>Nothing is being saved</summary>
+        <div class="answer">
+          <p>Check, in order:</p>
+          <ol>
+            <li>You are signed in (toolbar icon → your email is shown).</li>
+            <li>The panel is not paused.</li>
+            <li>Someone is speaking, and text appears in the panel. MeetMemo saves only what Meet captions.</li>
+            <li>The toolbar popup's <strong>Live sync</strong> section says “Saving…” or “Saved”. If it shows an error, it retries automatically.</li>
+          </ol>
+        </div>
+      </details>
+      <details class="faq">
+        <summary>Meetings take a long time to load the first time</summary>
+        <div class="answer"><p>The MeetMemo server sleeps when nobody has used it for a while and takes up to a minute to wake up. Lines you speak meanwhile are kept on your computer and uploaded as soon as the server answers, so nothing is lost.</p></div>
+      </details>
+      <details class="faq">
+        <summary>The transcript has wrong or strange words</summary>
+        <div class="answer"><p>The caption language probably doesn't match the spoken language. Use <strong>Change</strong> in the panel to pick the right one. Background noise and people speaking over each other also reduce caption quality.</p></div>
+      </details>
+      <details class="faq">
+        <summary>The panel doesn't appear in my meeting</summary>
+        <div class="answer"><p>MeetMemo works on Google Meet meeting pages (<code>meet.google.com/abc-defg-hij</code>). Refresh the meeting tab. If you just installed or updated the extension, reload it at <code>chrome://extensions</code> first.</p></div>
+      </details>
+      <details class="faq">
+        <summary>“Read in” is missing on the transcript page</summary>
+        <div class="answer"><p>On-device translation needs Chrome 138 or later on desktop. On other browsers the transcript is shown in its original language.</p></div>
+      </details>
+
+      <h2 id="support">Still stuck?</h2>
+      <p>Copy the diagnostic details below and send them to whoever supports MeetMemo for your team. They include versions and connection status only, never transcript text, tokens or passwords.</p>
+      <p>
+        <button type="button" class="btn" id="copy-diagnostics">Copy diagnostic details</button>
+        <span class="muted small" id="diag-status" aria-live="polite"></span>
+      </p>
+      <pre class="card small" id="diagnostics" style="padding:14px 16px;white-space:pre-wrap;font-family:var(--mono);" hidden></pre>
+    </article>
+
+    <p class="footer-note">See also: <a href="privacy.html">Privacy information</a> · <a href="settings.html">Settings</a></p>
+  </main>
+</body>
+</html>

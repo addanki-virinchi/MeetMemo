@@ -84,6 +84,7 @@
     "extension-auth/session.js",
     "extension-auth/localBridge.js",
     "extension-auth/links.js",
+    "extension-auth/panelPrivacy.js",
     "sync/content.js"
    ],
    "run_at": "document_start"
@@ -104,7 +105,11 @@
   {
    "resources": [
     "auth.html",
-    "unavailable.html"
+    "unavailable.html",
+    "history.html",
+    "settings.html",
+    "help.html",
+    "privacy.html"
    ],
    "matches": [
     "*://meet.google.com/*"

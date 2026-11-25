@@ -18,7 +18,8 @@ body.popup { width: 340px; }
 [hidden] { display: none !important; }
 
 .bar { display: flex; align-items: center; gap: 8px; padding: 12px 16px; }
-.footer { border-top: 1px solid var(--line); justify-content: flex-end; padding: 8px 16px; }
+.footer { border-top: 1px solid var(--line); justify-content: flex-end; gap: 16px; padding: 8px 16px; }
+button.primary.wide { width: 100%; margin-top: 4px; }
 .logo { width: 22px; height: 22px; }
 .brand { font-weight: 600; }
 

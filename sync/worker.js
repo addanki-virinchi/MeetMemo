@@ -360,6 +360,7 @@
   // ---- Sign in / Share / app links from the in-meeting panel (MEETMEMO_LINKS in sync/content.js) ----
   const pageUrl = (p) => chrome.runtime.getURL(p);
   const openSignIn = () => chrome.windows.create({ url: pageUrl('auth.html'), type: 'popup', width: 380, height: 640 });
+  const OWN_PAGES = ['history', 'settings', 'help', 'privacy'];
   const openTab = (url, tab) => chrome.tabs.create({ url, ...(tab ? { index: tab.index + 1, windowId: tab.windowId } : {}) });
 
   async function openTranscript(meeting, tab) {
@@ -382,6 +383,10 @@
     let run;
     if (msg.target === 'transcript' && msg.meeting?.sessionId) run = openTranscript(msg.meeting, sender.tab);
     else if (msg.target === 'unavailable') run = openTab(pageUrl(`unavailable.html?feature=${encodeURIComponent(msg.feature || 'hosted')}`), sender.tab);
+    else if (msg.target === 'page') {
+      if (!OWN_PAGES.includes(msg.page)) return; // only the extension's own pages
+      run = openTab(pageUrl(`${msg.page}.html`), sender.tab);
+    }
     else run = openSignIn();
     run.catch((err) => console.warn('[MeetMemo] could not open page', err));
   });

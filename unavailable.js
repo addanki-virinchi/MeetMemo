@@ -1,21 +1,22 @@
-// Explains a hosted-only feature that the local build does not provide (see extension-auth/links.js).
+// Explains a feature this version of MeetMemo does not provide (see extension-auth/links.js).
+// key: [tab title, heading, explanation]
 const FEATURES = {
-  'hosted-transcript': ['Hosted transcript', 'This link points to a transcript stored in the original hosted MeetMemo service, which this build does not connect to. Transcripts saved by the local build are listed under Recent meetings in the toolbar popup.'],
-  settings: ['Account settings', 'Account settings (tags, notifications, recording confirmation) live in the original hosted MeetMemo service, which this build does not connect to.'],
-  billing: ['Plans and billing', 'Plans, credits and upgrades belong to the original hosted MeetMemo service, which this build does not connect to.'],
-  invite: ['Invites', 'Inviting people belongs to the original hosted MeetMemo service, which this build does not connect to.'],
-  screenshots: ['Screenshots', 'Saving screenshots to a transcript needs the original hosted MeetMemo service. The local build saves caption text only.'],
-  'unsaved-transcripts': ['Saving older transcripts', 'This list is kept by the original panel, and saving it needs the original hosted MeetMemo service. Meetings captured while you were signed in to the local account were already saved by the local sync; see Recent meetings in the toolbar popup.'],
-  ai: ['Ask MeetMemo AI', 'AI answers and summaries need the original hosted MeetMemo service, which this build does not connect to. You are signed in, and your Google Meet transcript is still being saved to your account; see Recent meetings in the toolbar popup.'],
-  help: ['Help center', 'The MeetMemo help site belongs to the original hosted MeetMemo service, which this build does not connect to.'],
-  hosted: ['Hosted feature', 'This feature needs the original hosted MeetMemo service, which this build does not connect to.'],
+  'hosted-transcript': ['Old transcript link', 'This transcript link is no longer available', 'It points to a transcript in a previous MeetMemo service that this version does not connect to. Your saved transcripts are all listed under Meetings.'],
+  settings: ['Settings', 'These settings are not available', 'Open MeetMemo Settings for the options available in this version.'],
+  billing: ['Plans and billing', 'There are no plans or billing', 'This version of MeetMemo has no paid plans or credits.'],
+  invite: ['Invites', 'Invites are not available', 'Inviting teammates is not part of this version of MeetMemo.'],
+  screenshots: ['Screenshots', 'Screenshots are not available', 'MeetMemo saves caption text only. Screenshots of the meeting are not captured or stored.'],
+  'unsaved-transcripts': ['Older transcripts', 'This list is from an earlier version', 'Meetings captured while you were signed in were saved automatically; you will find them under Meetings.'],
+  ai: ['Ask MeetMemo AI', 'Ask MeetMemo AI is coming soon', 'Questions, summaries and action items for your meetings are on the way. Your Google Meet transcript is still being saved to your account; you can read it under Meetings.'],
+  help: ['Help', 'Looking for help?', 'Open Help for guides and troubleshooting.'],
+  hosted: ['Not available', 'This feature is not available', 'It is not part of the current version of MeetMemo.'],
 };
 
 document.addEventListener('DOMContentLoaded', () => {
   const key = new URLSearchParams(location.search).get('feature');
-  const [title, detail] = FEATURES[key] || FEATURES.hosted;
-  document.title = `${title} · Not available · MeetMemo`;
-  document.getElementById('title').textContent = `${title} is not available in this build`;
+  const [tab, heading, detail] = FEATURES[key] || FEATURES.hosted;
+  document.title = `${tab} · MeetMemo`;
+  document.getElementById('title').textContent = heading;
   document.getElementById('detail').textContent = detail;
   document.getElementById('open-popup').addEventListener('click', () => {
     chrome.windows.create({ url: chrome.runtime.getURL('auth.html'), type: 'popup', width: 380, height: 640 });

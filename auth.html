@@ -5,6 +5,7 @@
   <title>MeetMemo</title>
   <link rel="stylesheet" href="auth.css">
   <script src="meetmemo.config.js"></script>
+  <script src="ui/format.js"></script>
   <script type="module" src="auth.js"></script>
 </head>
 <body class="popup">
@@ -70,11 +71,14 @@
       <p id="meetings-empty" class="muted small" hidden>No saved meetings yet.</p>
       <p id="meetings-error" class="notice notice-error small" hidden></p>
       <button type="button" id="meetings-more" class="link small" hidden>Show more</button>
+      <p><button type="button" id="open-history" class="primary wide">View all meetings</button></p>
     </section>
   </main>
 
   <footer class="bar footer">
-    <button type="button" id="open-options" class="link small">Extension settings</button>
+    <button type="button" id="open-options" class="link small">Settings</button>
+    <button type="button" id="open-help" class="link small">Help</button>
+    <button type="button" id="open-privacy" class="link small">Privacy</button>
   </footer>
 </body>
 </html>
