@@ -24,6 +24,7 @@ export function firestoreHint(err) {
   switch (err?.code) {
     case 5: return 'Firestore database not found: create it in Firebase Console > Build > Firestore Database (Native mode, database id "(default)")';
     case 7: return 'Permission denied: the service account needs the "Cloud Datastore User" role and the Cloud Firestore API must be enabled for the project';
+    case 8: return 'Resource exhausted: Firestore quota exceeded, or the project is on a plan/region that rejects this request; see the logged message and Firebase Console > Usage';
     case 9: return 'Missing composite index: deploy backend/firestore.indexes.json (firebase deploy --only firestore:indexes)';
     case 16: return 'Invalid credentials: check FIREBASE_CLIENT_EMAIL / FIREBASE_PRIVATE_KEY belong to this FIREBASE_PROJECT_ID';
     default: return null;
