@@ -307,10 +307,76 @@ test('ROUTE-01: bundle bridge anchors are present exactly once', () => {
   once(options, 'function aa(e){return self.MEETMEMO_LINKS?self.MEETMEMO_LINKS.appUrl(e):');
   once(options, 'mmLocal=self.MEETMEMO_LOCAL_AUTH?self.MEETMEMO_LOCAL_AUTH.useUser(on.default):null');
   once(options, 'mmLocal=self.MEETMEMO_LOCAL_AUTH?self.MEETMEMO_LOCAL_AUTH.useUser(Wt.default):null');
+  // Hosted "Signed out" / "Sign Up" popovers are gated on the local account.
+  once(content, 'u?.mustRelogin?Ln.default.createElement(self.MEETMEMO_LOCAL_AUTH?self.MEETMEMO_LOCAL_AUTH.hostedPrompt(Ln.default):Ln.default.Fragment,null,Ln.default.createElement(X7,null)):null');
+  once(content, 'u?.mustSignUp?Ln.default.createElement(self.MEETMEMO_LOCAL_AUTH?self.MEETMEMO_LOCAL_AUTH.hostedPrompt(Ln.default):Ln.default.Fragment,null,Ln.default.createElement(NY,null)):null');
+  assert.equal(content.split('createElement(X7,null)').length - 1, 1, 'X7 mounted only behind the gate');
+  assert.equal(content.split('createElement(NY,null)').length - 1, 1, 'NY mounted only behind the gate');
+  assert.equal(content.split('self.MEETMEMO_LINKS.signIn("ask-ai"):n($L());return}').length - 1, 2);
+  assert.equal(content.split('n($L());return}').length - 1, 2, 'no ungated Ask AI relogin trigger');
+  // No unrouted navigation to the hosted MeetMemo domains.
+  once(content, 'var YP=self.MEETMEMO_LINKS?self.MEETMEMO_LINKS.appUrl("/help"):');
+  for (const [name, src] of [['content.js', content], ['options.js', options]]) {
+    const opens = src.match(/window\.open\("https:\/\/[^"]*meetmemo\.io[^"]*"/gi) || [];
+    const routed = src.match(/self\.MEETMEMO_LINKS\.openHelp\(\):window\.open\("https:\/\/[^"]*meetmemo\.io[^"]*"/gi) || [];
+    assert.equal(opens.length, routed.length, `${name}: every hosted window.open is routed`);
+  }
+  const background = read('background.js');
+  assert.equal(background.split('/api/2/u/welcome/').length - 1, 0, 'no install redirect to api2.MeetMemo.io');
+  once(background, 'chrome.runtime.setUninstallURL(""),');
+  once(background, 'await chrome.tabs.create({url:chrome.runtime.getURL("auth.html")})');
   const manifest = JSON.parse(read('manifest.json'));
   const sync = manifest.content_scripts.find((c) => c.js.includes('sync/content.js'));
   assert.deepEqual(sync.js, ['extension-auth/session.js', 'extension-auth/localBridge.js', 'extension-auth/links.js', 'sync/content.js']);
   assert.match(read('options.html'), /extension-auth\/links\.js"><\/script>\s*<script src="\/options\.js">/);
+  // Only the Render API is a host permission; hosted MeetMemo hosts are blocked, never allowed.
+  const apiHosts = manifest.host_permissions.filter((h) => !h.includes('meet.google.com'));
+  assert.deepEqual(apiHosts, ['https://meetmemo-api.onrender.com/*']);
+  assert.ok(!JSON.stringify(manifest.externally_connectable).toLowerCase().includes('meetmemo.io'));
+  const ruleset = manifest.declarative_net_request.rule_resources.find((r) => r.id === 'block_hosted_meetmemo');
+  assert.ok(ruleset?.enabled);
+  const rules = JSON.parse(read(ruleset.path));
+  assert.equal(rules[0].action.type, 'block');
+  assert.equal(rules[0].condition.urlFilter, '||meetmemo.io^');
+  assert.ok(rules[0].condition.resourceTypes.includes('main_frame'));
+});
+
+test('ROUTE-02: help links and Ask AI (signed in locally) open local explanation pages', async () => {
+  const browser = createBrowser();
+  const chromeApi = browser.chromeFor();
+  const sent = [];
+  chromeApi.runtime.sendMessage = async (m) => { sent.push(structuredClone(m)); }; // clone out of the VM realm
+  const L = runClassic(['extension-auth/links.js'], { chrome: chromeApi }).MEETMEMO_LINKS;
+  assert.equal(L.appUrl('/help'), 'chrome-extension://ext/unavailable.html?feature=help');
+  L.openHelp();
+  L.signIn('ask-ai');
+  L.signIn('must-relogin-popover');
+  assert.deepEqual(sent, [
+    { type: 'meetmemo-open', target: 'unavailable', feature: 'help' },
+    { type: 'meetmemo-open', target: 'unavailable', feature: 'ai' },
+    { type: 'meetmemo-open', target: 'signin' },
+  ]);
+  const unavailable = read('unavailable.js');
+  assert.match(unavailable, /\n  ai: \[/);
+  assert.match(unavailable, /\n  help: \[/);
+});
+
+test('AUTH-02: hosted Signed out / Sign Up popovers are hidden while a local account is signed in', async () => {
+  const browser = createBrowser();
+  const ctx = runClassic(['extension-auth/session.js', 'extension-auth/localBridge.js'], { chrome: browser.chromeFor() });
+  const L = ctx.MEETMEMO_LOCAL_AUTH;
+  const React = { useSyncExternalStore: (sub, get) => get() };
+  const Gate = L.hostedPrompt(React);
+  assert.equal(L.hostedPrompt(React), Gate, 'stable component identity across renders');
+  const popover = { popover: 'Signed out' };
+  await settle();
+  assert.equal(Gate({ children: popover }), popover, 'signed out: prompt shown');
+  await browser.local.set({ meetmemo_session: sessionFor('A', 's1') });
+  await settle();
+  assert.equal(Gate({ children: popover }), null, 'signed in (Render account): no sign-in prompt');
+  await browser.local.remove('meetmemo_session');
+  await settle();
+  assert.equal(Gate({ children: popover }), popover, 'logout brings the prompt back');
 });
 
 test('AUTH-01: local bridge hook hides sign-in prompts only while a local account is signed in', async () => {

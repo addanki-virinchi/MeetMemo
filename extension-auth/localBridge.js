@@ -13,6 +13,7 @@
   let user = null;
   let ready = false;
   const listeners = new Set();
+  const gates = new WeakMap();
   subscribe((u) => {
     user = u;
     ready = true;
@@ -31,6 +32,21 @@
     showSignIn(React, hostedSignedOut) {
       const local = api.useUser(React);
       return !!hostedSignedOut && !local;
+    },
+    // Component wrapping the panel's hosted modal prompts ("Signed out" relogin popover and the
+    // "Sign Up to save your transcripts" popover). Those are driven by the hosted account flags
+    // (mustRelogin / mustSignUp), which local sign-in never clears, so without this gate they
+    // kept asking an already signed-in user to sign in again. Renders its children only while
+    // no local account is signed in; re-renders on login/logout. One stable component per React.
+    hostedPrompt(React) {
+      let Gate = gates.get(React);
+      if (!Gate) {
+        Gate = function MeetMemoHostedPrompt({ children }) {
+          return api.useUser(React) ? null : children;
+        };
+        gates.set(React, Gate);
+      }
+      return Gate;
     },
   };
   self.MEETMEMO_LOCAL_AUTH = api;

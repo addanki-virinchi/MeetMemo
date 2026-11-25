@@ -6,6 +6,8 @@ const FEATURES = {
   invite: ['Invites', 'Inviting people belongs to the original hosted MeetMemo service, which this build does not connect to.'],
   screenshots: ['Screenshots', 'Saving screenshots to a transcript needs the original hosted MeetMemo service. The local build saves caption text only.'],
   'unsaved-transcripts': ['Saving older transcripts', 'This list is kept by the original panel, and saving it needs the original hosted MeetMemo service. Meetings captured while you were signed in to the local account were already saved by the local sync; see Recent meetings in the toolbar popup.'],
+  ai: ['Ask MeetMemo AI', 'AI answers and summaries need the original hosted MeetMemo service, which this build does not connect to. You are signed in, and your Google Meet transcript is still being saved to your account; see Recent meetings in the toolbar popup.'],
+  help: ['Help center', 'The MeetMemo help site belongs to the original hosted MeetMemo service, which this build does not connect to.'],
   hosted: ['Hosted feature', 'This feature needs the original hosted MeetMemo service, which this build does not connect to.'],
 };
 

@@ -34,6 +34,7 @@
     if (p === '/settings' || p.startsWith('/settings/')) return unavailable('settings');
     if (p === '/billing' || p.startsWith('/billing/')) return unavailable('billing');
     if (p === '/invite') return unavailable('invite');
+    if (p === '/help' || p.startsWith('/help/')) return unavailable('help');
     return unavailable('hosted');
   }
 
@@ -41,6 +42,9 @@
     'screenshot-button': 'screenshots',
     'minimised-screenshot-button': 'screenshots',
     'unsaved-transcript': 'unsaved-transcripts',
+    // Ask MeetMemo AI while a local account is signed in: AI is hosted-only, so explain that
+    // instead of showing the hosted "Signed out" popover to someone who is signed in.
+    'ask-ai': 'ai',
   };
 
   function send(msg) {
@@ -58,5 +62,12 @@
     return send({ target: 'signin' });
   }
 
-  self.MEETMEMO_LINKS = { appUrl, signIn, HOSTED_ONLY_SOURCES };
+  // Hard-coded help-site links in the bundles (help.MeetMemo.io, MeetMemo.io/help/...). Opened
+  // by the service worker so it also works where unavailable.html is not web-accessible.
+  function openHelp() {
+    send({ target: 'unavailable', feature: 'help' });
+    return null;
+  }
+
+  self.MEETMEMO_LINKS = { appUrl, signIn, openHelp, HOSTED_ONLY_SOURCES };
 })();

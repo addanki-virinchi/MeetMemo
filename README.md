@@ -60,8 +60,19 @@ After editing extension files, press **Reload** on `chrome://extensions` and ref
   the signed-in popup with **Retry**.
 * Local sign-in is **not** a hosted MeetMemo sign-in. The bundled panel keeps its original
   hosted account state. The bridge only hides its sign-in prompts (header button, orange "not
-  saved" banner, save-status tooltip) while a local account is signed in. Hosted features stay
-  unavailable and say so.
+  saved" banner, save-status tooltip, the "Signed out" relogin popover and the "Sign Up to save
+  your transcripts" popover) while a local account is signed in. Hosted features stay
+  unavailable and say so (Ask MeetMemo AI opens `unavailable.html?feature=ai`).
+
+### Render only: no hosted MeetMemo hosts
+
+* The only API host is the Render service in `meetmemo.config.js` / `host_permissions`.
+* The bundles still contain the original hosted URLs (`api2.MeetMemo.io`, `app.MeetMemo.io`,
+  `help.MeetMemo.io`). They are never navigated to: the install tab opens `auth.html` (was
+  `api2.MeetMemo.io/api/2/u/welcome/…`), the uninstall URL is cleared (was
+  `api2.MeetMemo.io/api/2/u/uninstall/…`), and help links open `unavailable.html?feature=help`.
+* As a safety net, the static ruleset `rules/block-hosted.json` blocks every request to
+  `meetmemo.io` and its subdomains, including page navigations.
 
 ### Local sync (Google Meet only, chat excluded)
 
@@ -122,8 +133,14 @@ The production bundles are edited only at these anchors. Each is present exactly
   * `Fl=()=>{…nt(e)…}` exposes `MEETMEMO_PANEL.currentTranscript`. It is read-only and used for Pause.
   * `showLoginButton:!e?.id` and `o=W(rm)` (the banner) use `MEETMEMO_LOCAL_AUTH.showSignIn`.
   * The `Zdk4lf` save-status tooltip text.
+  * `u?.mustRelogin` (`X7`, "Signed out") and `u?.mustSignUp` (`NY`, "Sign Up") are wrapped in
+    `MEETMEMO_LOCAL_AUTH.hostedPrompt`, which renders nothing while a local account is signed in.
+  * Both Ask AI `n($L())` calls route to `MEETMEMO_LINKS.signIn("ask-ai")` when signed in locally.
+  * `var YP=` and the hosted help `window.open(...)` calls use `MEETMEMO_LINKS.appUrl("/help")` / `openHelp()`.
+* `background.js`: the install welcome tab opens `auth.html`; `setUninstallURL("")`.
 * `options.js`:
   * `function Vw(e){` and `function aa(e){` use the same routing.
+  * The two `window.open("https://help.MeetMemo.io")` calls use `MEETMEMO_LINKS.openHelp()`.
   * The `uie` header shows the local account.
   * `BB` hides the "not signed in" warning when a local account is signed in.
 * `options.html` loads `extension-auth/session.js`, `localBridge.js` and `links.js` before `options.js`.
@@ -139,9 +156,9 @@ The production bundles are edited only at these anchors. Each is present exactly
 
 * Not verified in a live browser: login, panel/popup/options agreement, Meet capture, Pause,
   transcript open/copy. Run the steps above before relying on any of it.
-* The panel still shows some hosted-only state: the save-status icon stays orange, and the
-  hosted relogin/sign-up popovers can still appear. AI, hosted sharing links, billing,
-  screenshots and hosted autosave need the original hosted service.
+* The panel still shows some hosted-only state: the save-status icon stays orange. The hosted
+  relogin/sign-up popovers appear only while no local account is signed in. AI, hosted sharing
+  links, billing, screenshots and hosted autosave need the original hosted service.
 * Tokens remain in `chrome.storage.local`, which content scripts can technically read. The
   authority refuses to hand tokens to content scripts.
 * Google sign-in and the Render deployment are documented in [DEPLOYMENT.md](./DEPLOYMENT.md);

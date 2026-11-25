@@ -1,0 +1,23 @@
+[
+ {
+  "id": 1,
+  "priority": 1,
+  "action": { "type": "block" },
+  "condition": {
+   "urlFilter": "||meetmemo.io^",
+   "resourceTypes": [
+    "main_frame",
+    "sub_frame",
+    "xmlhttprequest",
+    "websocket",
+    "script",
+    "image",
+    "stylesheet",
+    "font",
+    "media",
+    "ping",
+    "other"
+   ]
+  }
+ }
+]

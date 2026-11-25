@@ -39,8 +39,16 @@
  ],
  "externally_connectable": {
   "matches": [
-   "https://app.MeetMemo.io/*",
    "https://testfirebaseauth-f5df6.firebaseapp.com/*"
+  ]
+ },
+ "declarative_net_request": {
+  "rule_resources": [
+   {
+    "id": "block_hosted_meetmemo",
+    "enabled": true,
+    "path": "rules/block-hosted.json"
+   }
   ]
  },
  "options_page": "options.html",
