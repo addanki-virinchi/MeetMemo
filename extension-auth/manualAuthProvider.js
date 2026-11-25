@@ -1,54 +1,74 @@
-// TEST_MODE provider: name + email + password via the backend /v1/auth routes.
-// Same interface as googleAuthProvider, so switching is a one-line change in createAuthProvider().
+// Auth provider: email + password and Google sign-in, both through the backend /v1/auth routes
+// (which relay Firebase Authentication).
+//
+// This page-side provider never writes the session itself. Credentials are exchanged for
+// tokens here, then the service worker's session authority (extension-auth/sessionAuthority.js)
+// stores them, refreshes them and removes them. Identity changes are observed through
+// chrome.storage, so every open page sees logins, logouts and account switches made anywhere.
 // Tokens are kept in chrome.storage.local (never the password).
-const KEY = 'meetmemo_session';
+import './session.js';
 
-export function createManualAuthProvider({ baseUrl }) {
-  const listeners = new Set();
-  const notify = (u) => listeners.forEach((cb) => cb(u));
+const { subscribe, currentUser } = self.MeetMemoSession;
+const REQUEST_TIMEOUT_MS = 60_000; // a sleeping free-tier host can take ~50 s to wake up
 
-  const load = async () => (await chrome.storage.local.get(KEY))[KEY] || null;
-  const save = (s) => chrome.storage.local.set({ [KEY]: s });
+export function createManualAuthProvider({ baseUrl, chromeApi = self.chrome, fetchImpl = (...a) => fetch(...a) }) {
+  let seq = 0;
+  // One request per short-lived port to the service worker's session authority.
+  function call(op, extra) {
+    return new Promise((resolve, reject) => {
+      const id = ++seq;
+      let port;
+      try {
+        port = chromeApi.runtime.connect({ name: 'meetmemo-auth' });
+      } catch (err) {
+        reject(Object.assign(new Error('The extension was reloaded. Close and reopen this page.'), { code: 'no_worker' }));
+        return;
+      }
+      port.onMessage.addListener((res) => {
+        if (res?.id !== id) return;
+        port.disconnect();
+        if (res.ok) resolve(res.value);
+        else reject(Object.assign(new Error(res.error?.message || 'Request failed'), res.error || {}));
+      });
+      port.onDisconnect.addListener(() => {
+        void chromeApi.runtime.lastError;
+        reject(Object.assign(new Error('The extension background stopped responding. Try again.'), { code: 'no_worker' }));
+      });
+      port.postMessage({ id, op, ...extra });
+    });
+  }
 
   async function post(path, body) {
-    const res = await fetch(`${baseUrl}/v1/auth/${path}`, {
+    const res = await fetchImpl(`${baseUrl}/v1/auth/${path}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(body),
+      signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
     });
     const data = await res.json().catch(() => ({}));
     if (!res.ok) throw Object.assign(new Error(data.message || `HTTP ${res.status}`), { status: res.status, code: data.error });
     return data;
   }
 
-  const toSession = (d) => ({ ...d, expiresAt: Date.now() + d.expiresIn * 1000 });
-  const toUser = (s) => ({ uid: s.uid, email: s.email, displayName: s.displayName });
-
   return {
     async signUp({ name, email, password }) {
-      const s = toSession(await post('signup', { name, email, password }));
-      await save(s); notify(toUser(s)); return toUser(s);
+      return call('commitLogin', { session: await post('signup', { name, email, password }) });
     },
     async signIn({ email, password }) {
-      const s = toSession(await post('login', { email, password }));
-      await save(s); notify(toUser(s)); return toUser(s);
+      return call('commitLogin', { session: await post('login', { email, password }) });
     },
-    async signOut() { await chrome.storage.local.remove(KEY); notify(null); },
+    // Runs inside the service worker; resolves once the Google window is done.
+    signInWithGoogle: () => call('googleSignIn'),
+    signOut: () => call('signOut'),
+    // Token for the current session, refreshed centrally when close to expiry.
     async getIdToken(forceRefresh = false) {
-      let s = await load();
-      if (!s) return null;
-      if (forceRefresh || s.expiresAt - Date.now() < 60_000) {
-        try {
-          s = { ...s, ...toSession(await post('refresh', { refreshToken: s.refreshToken })) };
-          await save(s);
-        } catch { await this.signOut(); return null; }
-      }
-      return s.idToken;
+      return (await call('getAuth', { forceRefresh }))?.idToken ?? null;
     },
-    onAuthStateChanged(cb) {
-      listeners.add(cb);
-      load().then((s) => cb(s ? toUser(s) : null));
-      return () => listeners.delete(cb);
-    },
+    // { idToken, user } so callers can tell which account a token belongs to.
+    getAuth: (forceRefresh = false) => call('getAuth', { forceRefresh }),
+    getUser: () => currentUser(chromeApi),
+    setProfileState: (sid, state, message) => call('setProfileState', { sid, state, message }),
+    // cb(user|null) now and on every identity change; returns unsubscribe.
+    onAuthStateChanged: (cb) => subscribe(cb, chromeApi),
   };
 }

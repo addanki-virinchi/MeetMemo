@@ -12,6 +12,11 @@ dotenv.config({ path: path.join(root, '.env') });
 const isPlaceholder = (v) => !v || /REPLACE/i.test(v);
 const isProd = env === 'production';
 
+// Tolerates stray surrounding quotes/whitespace and both literal "\n" and real newlines.
+function normalizePrivateKey(raw) {
+  return raw.trim().replace(/^["']|["']$/g, '').replace(/\\n/g, '\n').trim() + '\n';
+}
+
 function buildCredentialConfig() {
   const { FIREBASE_PROJECT_ID, FIREBASE_CLIENT_EMAIL, FIREBASE_PRIVATE_KEY, GOOGLE_APPLICATION_CREDENTIALS } = process.env;
   if (process.env.FIRESTORE_EMULATOR_HOST) return { mode: 'emulator', projectId: FIREBASE_PROJECT_ID };
@@ -20,7 +25,7 @@ function buildCredentialConfig() {
       mode: 'env',
       projectId: FIREBASE_PROJECT_ID,
       clientEmail: FIREBASE_CLIENT_EMAIL,
-      privateKey: FIREBASE_PRIVATE_KEY.replace(/\\n/g, '\n'),
+      privateKey: normalizePrivateKey(FIREBASE_PRIVATE_KEY),
     };
   }
   if (GOOGLE_APPLICATION_CREDENTIALS) return { mode: 'file', projectId: FIREBASE_PROJECT_ID };
@@ -40,8 +45,14 @@ export const config = {
     max: Number(process.env.RATE_LIMIT_MAX || 120),
   },
   firebase: buildCredentialConfig(),
-  testMode: process.env.TEST_MODE === 'true',
-  webApiKey: isPlaceholder(process.env.FIREBASE_WEB_API_KEY) ? null : process.env.FIREBASE_WEB_API_KEY,
+  // Email/password sign-in goes through Firebase Identity Toolkit (the Admin SDK cannot verify
+  // passwords), so it needs the public web API key. On by default; AUTH_PASSWORD_ENABLED=false
+  // turns it off (Google sign-in stays available).
+  passwordAuthEnabled: process.env.AUTH_PASSWORD_ENABLED !== 'false',
+  // Google sign-in: the extension obtains a Google ID token for this OAuth client and the
+  // backend exchanges it for a Firebase session. Public identifier, not a secret.
+  googleClientId: isPlaceholder(process.env.GOOGLE_OAUTH_CLIENT_ID) ? null : process.env.GOOGLE_OAUTH_CLIENT_ID.trim(),
+  webApiKey: isPlaceholder(process.env.FIREBASE_WEB_API_KEY) ? null : process.env.FIREBASE_WEB_API_KEY.trim(),
 };
 
 export function validateConfig() {
@@ -51,7 +62,6 @@ export function validateConfig() {
     problems.push('No Firebase credentials found: set FIREBASE_CLIENT_EMAIL + FIREBASE_PRIVATE_KEY, GOOGLE_APPLICATION_CREDENTIALS, or FIRESTORE_EMULATOR_HOST');
   }
   if (isProd && config.allowedOrigins.length === 0) problems.push('ALLOWED_ORIGINS must be set in production');
-  if (isProd && config.testMode) problems.push('TEST_MODE must not be true in production');
-  if (config.testMode && !config.webApiKey) problems.push('TEST_MODE=true requires FIREBASE_WEB_API_KEY');
+  if (!config.webApiKey) problems.push('FIREBASE_WEB_API_KEY is not set (Firebase Console > Project settings > General > Web API Key)');
   if (problems.length) throw new Error(`Invalid configuration:\n - ${problems.join('\n - ')}`);
 }

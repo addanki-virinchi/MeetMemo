@@ -1,5 +1,152 @@
 # MeetMemo meeting transcription: repository logic
 
+> Deploying to Render, Google sign-in setup and the end-to-end checklist: see [DEPLOYMENT.md](./DEPLOYMENT.md).
+
+## Local testing (sign-in and transcript saving)
+
+The bundled UI's own sign-in goes to a hosted web app (`app.MeetMemo.io`) that is not part
+of this repo, so the extension uses a local auth + sync layer instead:
+
+| File | Role |
+| --- | --- |
+| `auth.html` / `auth.js` | Toolbar popup: sign in, create account, profile-setup errors with Retry, per-meeting sync status, recent meetings (Show more) |
+| `transcript.html` / `transcript.js` | Private, read-only view of a saved transcript (all pages; follows sign-in changes; `?live=1` follows saving) |
+| `unavailable.html` / `unavailable.js` | Explains hosted-only features (billing, hosted settings, screenshots, …) that this build does not provide |
+| `extension-auth/session.js` | Shared identity helpers: `subscribe` (cross-context login/logout/switch), `toUser` (no tokens), `statusFor`, capabilities |
+| `extension-auth/sessionAuthority.js` | Service worker only: the single writer of the session (login commit, logout, token refresh, profile state) |
+| `extension-auth/manualAuthProvider.js` | Page-side provider (email/password and Google sign-in via the backend `/v1/auth` routes); talks to the authority over the `meetmemo-auth` port |
+| `extension-auth/apiClient.js` | Backend client: timeouts, `expectUid` guard, paginated `listAllSegments` |
+| `extension-auth/localBridge.js` | `MEETMEMO_LOCAL_AUTH` for the bundled panel/options (local identity only) |
+| `extension-auth/links.js` | `MEETMEMO_LINKS`: explicit routing table for the bundles' hosted links and sign-in prompts |
+| `sync/content.js` | On Meet: tracks caption revisions, respects Pause, hands lines to the worker's durable queue |
+| `sync/worker.js` | Durable per-account queue, meeting mapping, single upload loop with retries, scoped status |
+| `sync/segment-id.js` | Segment document ids (`m2_` + 128-bit SHA-256 prefix; legacy scheme for old meetings) |
+| `service-worker.js` | Loads the bundled `background.js` plus the files above |
+| `meetmemo.config.js` | API base URL shared by pages and the worker |
+
+One-time Firebase setup (project `meetmemo-c7576`):
+
+1. Firebase Console → **Build → Firestore Database → Create database** (any region).
+2. Firebase Console → **Build → Authentication → Sign-in method** → enable **Email/Password**.
+3. Deploy the composite index used by the meetings list:
+   `npx firebase-tools deploy --only firestore:indexes,firestore:rules` (from `backend/`).
+   Without it the popup's "Recent meetings" errors; saving still works.
+
+Run it:
+
+1. `cd backend && npm install`, then start the API:
+   `npx cross-env NODE_ENV=development node src/server.js` (needs real Firebase credentials and
+   `FIREBASE_WEB_API_KEY` in `backend/.env.development`). Check `http://localhost:8080/healthz`.
+2. Chrome → `chrome://extensions` → Developer mode → **Load unpacked** → this folder.
+   The extension id must be `gnolicpkknhchlmmfgamghnjcbmpndlf` (it matches `ALLOWED_ORIGINS`).
+3. Click the toolbar icon → **Create account** (any email, password ≥ 8 characters).
+4. Join a Google Meet call, open the MeetMemo panel and let captions run. Each line is saved
+   within a few seconds; the popup shows "Saving (abc-defg-hij)…".
+5. Popup → **Recent meetings** → open the meeting to see the saved transcript.
+
+After editing extension files, press **Reload** on `chrome://extensions` and refresh the Meet tab.
+
+### Accounts and sessions
+
+* One local session (`chrome.storage.local.meetmemo_session`) is shared by the popup, the
+  in-meeting panel, the options page, the transcript viewer and the worker. Only the service
+  worker writes it (`sessionAuthority.js`). Every write is serialized and checked against the
+  per-login session id, so a token refresh still in flight during logout or an account switch
+  is discarded instead of restoring the old account. Concurrent refreshes share one request. A
+  backend that is down keeps the session; a rejected refresh token ends only that session.
+* Every open page re-renders on login, logout, account switch or removal by the worker
+  (`chrome.storage.onChanged`), without reloading.
+* Profile setup (`POST /v1/users/me`) is tracked separately from sign-in. A failure is shown in
+  the signed-in popup with **Retry**.
+* Local sign-in is **not** a hosted MeetMemo sign-in. The bundled panel keeps its original
+  hosted account state. The bridge only hides its sign-in prompts (header button, orange "not
+  saved" banner, save-status tooltip) while a local account is signed in. Hosted features stay
+  unavailable and say so.
+
+### Local sync (Google Meet only, chat excluded)
+
+* Each caption id's highest accepted revision is remembered. Older revisions are ignored; an
+  equal revision with identical text is a duplicate; an equal revision with new text is
+  accepted. The backend enforces the same rule: a stored higher `rev` is never replaced.
+* Lines are handed to the worker about once a second. The worker writes them to a durable queue
+  (`meetmemo_q:<tabSession>:<uid>`) **before** acknowledging. Upload to the backend happens
+  afterwards in a single loop, with timeouts, backoff, a one-minute alarm and a retry at worker
+  start-up. Closing a tab loses at most the last second of captions.
+* Ownership: queued lines belong to the account signed in when they were received and are
+  uploaded only with that account's token. Lines captured while signed out are saved to the next
+  account that signs in. Lines held for a different account wait up to 7 days for it to sign in.
+* The queue holds at most 5,000 unsaved lines per meeting tab. Overflow drops the oldest lines
+  and the popup reports how many were dropped.
+* Pause and auto-pause: while the panel's transcript is paused, captions are not saved. The
+  panel itself also drops them.
+* Status (`meetmemo_sync_status`) records the uid and session id; status from another account or
+  session is never shown. It is cleared on logout and on login.
+
+### Compatibility decisions
+
+* **Segment ids.** New meetings (`segmentIdScheme: 2`) use `m2_` plus the first 32 hex characters
+  of SHA-256 over the caption id, and store the original id as `sourceId`. Meetings that the
+  previous version already mapped in an open tab session keep the old lossy ids (`/` → `_`, cut
+  at 200 characters), so lines re-sent after upgrading do not duplicate. The old collision risk
+  remains for those meetings only. Existing segment documents are not rewritten.
+* **Revisions.** `rev` is optional. Segments without it (old data, old clients) count as "no
+  revision", so any new write replaces them, as before. No migration is needed.
+* **Pagination.** `GET /v1/meetings/:id/segments?limit=1..1000&after=<cursor>` orders by
+  `(ts, document id)` and returns `{ items, next }`, where `next` is null on the last page. An
+  invalid `limit` or `after` returns 400. Only single-field ordering is used (no new composite
+  index).
+* **Old mapping storage.** The previous `storage.session.meetmemo_sync_meetings` object is
+  migrated once to per-account keys (`meetmemo_map:<uid>:<tabSession>`).
+
+### In-meeting panel routing
+
+| Panel control | Opens |
+| --- | --- |
+| Sign In (header, banner, relogin/sign-up popovers) | `auth.html` sign-in window |
+| Share | This meeting's private transcript (`transcript.html?id=…&live=1`) after pending lines are durably queued; the sign-in window if signed out. Tooltip relabelled in `lang/en.json` (`juDfTR`) |
+| View transcript list | `auth.html` (Recent meetings) |
+| Settings / tags / notifications | `unavailable.html?feature=settings` |
+| Upgrade / billing | `unavailable.html?feature=billing` |
+| Screenshot buttons | `unavailable.html?feature=screenshots` |
+| Hosted transcript links (`/transcripts/<hostedId>`) | `unavailable.html?feature=hosted-transcript` |
+| Options page: Sign In / My MeetMemo / logo / Continue | `auth.html`. Save on an unsaved transcript opens `unavailable.html?feature=unsaved-transcripts` |
+
+### Bundle bridge (no original source or build pipeline in this repo)
+
+The production bundles are edited only at these anchors. Each is present exactly once, which
+`tests/viewer-routing.test.mjs` checks.
+
+* `content.js`:
+  * `function Za(e){` (sign-in) calls `MEETMEMO_LINKS.signIn`.
+  * `function gn(e){` (hosted URL) calls `MEETMEMO_LINKS.appUrl`.
+  * `Fl=()=>{…nt(e)…}` exposes `MEETMEMO_PANEL.currentTranscript`. It is read-only and used for Pause.
+  * `showLoginButton:!e?.id` and `o=W(rm)` (the banner) use `MEETMEMO_LOCAL_AUTH.showSignIn`.
+  * The `Zdk4lf` save-status tooltip text.
+* `options.js`:
+  * `function Vw(e){` and `function aa(e){` use the same routing.
+  * The `uie` header shows the local account.
+  * `BB` hides the "not signed in" warning when a local account is signed in.
+* `options.html` loads `extension-auth/session.js`, `localBridge.js` and `links.js` before `options.js`.
+
+### Tests
+
+* Extension: `node --test "tests/*.test.mjs"`, run from this folder. The tests run the real
+  files in isolated VM contexts with fake storage, ports, auth and backend. No browser or
+  account is used.
+* Backend: `cd backend && npm test`. Route tests run against an in-memory Firestore fake.
+
+### Limitations
+
+* Not verified in a live browser: login, panel/popup/options agreement, Meet capture, Pause,
+  transcript open/copy. Run the steps above before relying on any of it.
+* The panel still shows some hosted-only state: the save-status icon stays orange, and the
+  hosted relogin/sign-up popovers can still appear. AI, hosted sharing links, billing,
+  screenshots and hosted autosave need the original hosted service.
+* Tokens remain in `chrome.storage.local`, which content scripts can technically read. The
+  authority refuses to hand tokens to content scripts.
+* Google sign-in and the Render deployment are documented in [DEPLOYMENT.md](./DEPLOYMENT.md);
+  neither has been exercised against a live Google account or browser from this repo's tests.
+
 ## Purpose and scope
 
 This repository is the packaged browser extension for MeetMemo. Its primary

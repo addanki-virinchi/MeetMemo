@@ -1,6 +1,5 @@
 {
-"update_url": "https://clients2.google.com/service/update2/crx",
-
+ "update_url": "https://clients2.google.com/service/update2/crx",
  "manifest_version": 3,
  "name": "__MSG_appName__",
  "short_name": "MeetMemo",
@@ -8,15 +7,16 @@
  "version": "3.1.7372",
  "default_locale": "en",
  "action": {
-  "default_popup": "popup.html",
+  "default_popup": "auth.html",
   "default_title": "Manage MeetMemo's options"
  },
  "background": {
-  "service_worker": "background.js"
+  "service_worker": "service-worker.js"
  },
  "icons": {
   "16": "favicon-16.png",
-  "48": "favicon-32.png",
+  "32": "favicon-32.png",
+  "48": "logo-48.png",
   "128": "logo-128.png"
  },
  "permissions": [
@@ -26,10 +26,12 @@
   "alarms",
   "scripting",
   "unlimitedStorage",
+  "identity",
   "declarativeNetRequest"
  ],
  "host_permissions": [
-  "*://meet.google.com/*-*-*"
+  "*://meet.google.com/*-*-*",
+  "http://localhost:8080/*"
  ],
  "optional_host_permissions": [
   "*://*/*",
@@ -65,6 +67,18 @@
     "rtcinjector.js"
    ],
    "run_at": "document_start"
+  },
+  {
+   "matches": [
+    "*://meet.google.com/*-*-*"
+   ],
+   "js": [
+    "extension-auth/session.js",
+    "extension-auth/localBridge.js",
+    "extension-auth/links.js",
+    "sync/content.js"
+   ],
+   "run_at": "document_start"
   }
  ],
  "web_accessible_resources": [
@@ -78,7 +92,16 @@
    "matches": [
     "*://*/*"
    ]
+  },
+  {
+   "resources": [
+    "auth.html",
+    "unavailable.html"
+   ],
+   "matches": [
+    "*://meet.google.com/*"
+   ]
   }
  ],
- "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAqkt1B1d00BffSzyCwh9TfW+fLWUKM4M5TjGBTVjSGPo0v0gl7qcF3Lc89HFv9vUWjykf0piVKO/YehPXjPeIKM1kQV5kdBJXPoXXncswPGlhXyeziqUr7KnU2kA8VVAf+aqpmG10OqFpuxSSvUcYsA8Yf4JtKSuhnv/tMsbjjwhTP+MXkCkp+bDJLEhhRhP8u7zKfWSAufGsV8v0/91P4+vCP9ZbUlRdRgG6W7ezRw0DqWDbvrqeP96g2WrXo7ewL4SNByqERPQNpcP9j7KukqB7KQzGRZDXl7Dw/bXI804t6UAqwysxGa3mq+2sGfsYLtmTlWNicH7QRQCiZ9BanQIDAQAB"
+ "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA7vV5td2cBAAEd35W0aDniouEfWZUwxL4eQf02D9UPdQ+8Fdf27jKrdtJfU2VA+5uOTyCAFoBeLjnXqSwWpJ4+wM1hoOWnsuyBmCBp/y6FjPs4cXmsesduwXmj+HjRFnarOlQjOdaSjDrs1Y1/y2dItnqQO4RwqJWy8iBNZhBTAwmw2bw/abCPL5sC3eDMwNMaLdo1R3dFWXq6REIxgrtT3UaGtCTIEQWqNHaXPmvvDfJ8/tvZTbr7qT7ZmsvBYa/+3+xYyRg5LzTJH7Mwsof2nHqXQFL/1EpYrXXQd6osXwJxWPzlKQ0P8jF+jPaM+HKWw41U+hDtn3dchvBRYfN3wIDAQAB"
 }
