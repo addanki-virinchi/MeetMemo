@@ -36,7 +36,7 @@ export function createApiClient({ baseUrl, authProvider, fetchImpl = (...a) => f
 
   const id = (x) => encodeURIComponent(x);
 
-  // Ask MeetMemo AI: POST that answers with Server-Sent Events (EventSource cannot send the
+  // Ask Meet Memo: POST that answers with Server-Sent Events (EventSource cannot send the
   // Authorization header, so the stream is read from fetch). onEvent(name, data) gets meta,
   // cite, delta, done and error events. The 60 s timeout covers only the wait for the response
   // to start (a sleeping server can take that long); `signal` stops the stream at any time.
@@ -118,7 +118,7 @@ export function createApiClient({ baseUrl, authProvider, fetchImpl = (...a) => f
     },
     appendSegments: (meetingId, segments) => request(`/v1/meetings/${id(meetingId)}/segments`, { method: 'POST', body: { segments } }),
     deleteMeeting: (meetingId) => request(`/v1/meetings/${id(meetingId)}`, { method: 'DELETE' }),
-    // Ask MeetMemo AI
+    // Ask Meet Memo
     askMeeting,
     listAiThreads: (meetingId, opts) => request(`/v1/meetings/${id(meetingId)}/ai/threads`, opts),
     getAiThread: (meetingId, threadId, opts) => request(`/v1/meetings/${id(meetingId)}/ai/threads/${id(threadId)}`, opts),

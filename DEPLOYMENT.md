@@ -25,7 +25,7 @@ Nothing is tied to Render. The API URL lives in two extension files only, kept i
 | `FIREBASE_WEB_API_KEY` | Firebase Console → Project settings → General → Web API Key | no (public) |
 | `GOOGLE_OAUTH_CLIENT_ID` | OAuth client id from step 3 | no (public) |
 | `AUTH_PASSWORD_ENABLED` | `true` (default) | no |
-| `ANTHROPIC_API_KEY` | Anthropic API key for Ask MeetMemo AI. Optional: without it the server starts and Ask AI says it is not set up | **yes** |
+| `ANTHROPIC_API_KEY` | Anthropic API key for Claude answers and Ask Meet Memo. Optional: without it the server starts and both say they are not set up | **yes** |
 | `AI_MODEL` | `claude-haiku-5-5` (default) | no |
 | `AI_RATE_LIMIT_PER_10MIN` | questions per user per 10 minutes, default `20` | no |
 | `AI_LIVE_MODEL` | model for live auto-answer, default `AI_MODEL` (`claude-haiku-5-5`) | no |

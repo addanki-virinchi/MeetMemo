@@ -369,7 +369,12 @@ test('ROUTE-01: bundle bridge anchors are present exactly once', () => {
   once(background, 'await chrome.tabs.create({url:chrome.runtime.getURL("auth.html")})');
   const manifest = JSON.parse(read('manifest.json'));
   const sync = manifest.content_scripts.find((c) => c.js.includes('sync/content.js'));
-  assert.deepEqual(sync.js, ['extension-auth/session.js', 'extension-auth/localBridge.js', 'extension-auth/links.js', 'extension-auth/panelPrivacy.js', 'sync/live-detect.js', 'sync/content.js']);
+  assert.deepEqual(sync.js, ['extension-auth/session.js', 'extension-auth/localBridge.js', 'extension-auth/links.js', 'extension-auth/panelPrivacy.js', 'sync/live-detect.js', 'sync/content.js', 'sync/claude-dock.js']);
+  // The Claude tab, its switch and the answer feed live in the panel's tab bar (sync/claude-dock.js).
+  once(content, 'vi.default.createElement("span",{"data-meetmemo-claude-toggle":"",className:"flex shrink-0 items-center"})');
+  once(content, 'vi.default.createElement("div",{"data-meetmemo-claude-feed":""})');
+  assert.equal(content.split('defaultMessage:"Claude"').length - 1, 3, 'tab, minimised button and its tooltip say Claude');
+  assert.equal(content.split('MeetMemo AI').length - 1, 0, 'no outdated assistant name left in the panel');
   // Privacy popover and "Notify in chat" no longer point at the old hosted domain.
   once(content, 'self.MEETMEMO_PANEL_PRIVACY?self.MEETMEMO_PANEL_PRIVACY.items(ye.default):');
   assert.equal(content.split('MeetMemo.io/r/notetaking').length - 1, 0);

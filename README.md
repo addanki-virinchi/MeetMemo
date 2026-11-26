@@ -12,12 +12,12 @@ of this repo, so the extension uses a local auth + sync layer instead:
 | `auth.html` / `auth.js` | Toolbar popup: sign in, create account, profile-setup errors with Retry, per-meeting sync status, recent meetings (Show more) |
 | `history.html` / `history.js` | Transcription history: meetings grouped by day with title/code, date, time, duration and a short preview; search, open, delete |
 | `transcript.html` / `transcript.js` | Private, read-only transcript reader (all pages; follows sign-in changes; `?live=1` follows saving). Copy, download .txt, print/PDF, and on-device "Read in" translation via Chrome's built-in `Translator` (never changes the saved text) |
-| `settings.html` / `settings.js` | Account, transcription-language guidance, reading language, Ask AI answer language (saved for later), data links, server check. Prefs in `chrome.storage.local.meetmemo_prefs` |
+| `settings.html` / `settings.js` | Account, transcription-language guidance, reading language, Ask Meet Memo answer language (saved for later), data links, server check. Prefs in `chrome.storage.local.meetmemo_prefs` |
 | `help.html` / `help.js` | Getting started, panel controls, languages, troubleshooting, copyable diagnostics (no transcript text or tokens) |
 | `privacy.html` | What is saved, where, who can see it, retention and deletion |
 | `ui/pages.css`, `ui/format.js` | Shared styles (light/dark, print) and display helpers + preferences for the pages above |
 | `extension-auth/panelPrivacy.js` | Content of the panel's Privacy (shield) popover |
-| `unavailable.html` / `unavailable.js` | Explains features this version does not provide (billing, screenshots, Ask AI "coming soon", …) |
+| `unavailable.html` / `unavailable.js` | Explains features this version does not provide (billing, screenshots, Ask Meet Memo "coming soon", …) |
 | `extension-auth/session.js` | Shared identity helpers: `subscribe` (cross-context login/logout/switch), `toUser` (no tokens), `statusFor`, capabilities |
 | `extension-auth/sessionAuthority.js` | Service worker only: the single writer of the session (login commit, logout, token refresh, profile state) |
 | `extension-auth/manualAuthProvider.js` | Page-side provider (email/password and Google sign-in via the backend `/v1/auth` routes); talks to the authority over the `meetmemo-auth` port |
@@ -68,7 +68,7 @@ After editing extension files, press **Reload** on `chrome://extensions` and ref
   hosted account state. The bridge only hides its sign-in prompts (header button, orange "not
   saved" banner, save-status tooltip, the "Signed out" relogin popover and the "Sign Up to save
   your transcripts" popover) while a local account is signed in. Hosted features stay
-  unavailable and say so (Ask MeetMemo AI opens `unavailable.html?feature=ai`).
+  unavailable and say so (the Claude tab opens `unavailable.html?feature=ai`).
 
 ### Render only: no hosted MeetMemo hosts
 
@@ -145,7 +145,7 @@ The production bundles are edited only at these anchors. Each is present exactly
   * The `Zdk4lf` save-status tooltip text.
   * `u?.mustRelogin` (`X7`, "Signed out") and `u?.mustSignUp` (`NY`, "Sign Up") are wrapped in
     `MEETMEMO_LOCAL_AUTH.hostedPrompt`, which renders nothing while a local account is signed in.
-  * Both Ask AI `n($L())` calls route to `MEETMEMO_LINKS.signIn("ask-ai")` when signed in locally.
+  * Both Ask Meet Memo `n($L())` calls route to `MEETMEMO_LINKS.signIn("ask-ai")` when signed in locally.
   * `var YP=` and the hosted help `window.open(...)` calls use `MEETMEMO_LINKS.appUrl("/help")` / `openHelp()`.
   * The privacy popover's `o2I5Fb` `<dd>` is replaced by `MEETMEMO_PANEL_PRIVACY.items(ye.default)`; the "Notify in chat"
     message no longer contains a `MeetMemo.io` link.
@@ -467,7 +467,7 @@ Visible product behavior supported by the localization files includes:
 * language switching;
 * screenshots and highlights attached to the transcript;
 * meeting sharing by link or email;
-* summaries, action items, follow-up questions, and “Ask MeetMemo AI”;
+* summaries, action items, follow-up questions, and “Ask Meet Memo”;
 * participant notification prompts explaining that transcription is active.
 
 These features are downstream of capture. If no caption event reaches the

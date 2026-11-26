@@ -75,7 +75,7 @@ function buildCard(item) {
   const actions = el('div', 'actions');
   const open = el('a', 'btn small', 'Open transcript');
   open.href = transcriptUrl(m.id);
-  const askAi = el('a', 'btn small ghost', 'Ask AI');
+  const askAi = el('a', 'btn small ghost', 'Ask Meet Memo');
   askAi.href = `${transcriptUrl(m.id)}&ask=1`;
   askAi.title = 'Ask questions about this meeting';
   const del = el('button', 'btn small ghost danger');

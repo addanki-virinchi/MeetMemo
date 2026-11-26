@@ -39,7 +39,7 @@
 
         <div class="view-tabs" role="tablist" aria-label="View" hidden>
           <button type="button" role="tab" data-view="transcript" aria-selected="true" aria-controls="segments">Transcript</button>
-          <button type="button" role="tab" data-view="ai" aria-selected="false" aria-controls="ai-panel">Ask AI</button>
+          <button type="button" role="tab" data-view="ai" aria-selected="false" aria-controls="ai-panel">Ask Meet Memo</button>
         </div>
 
         <div class="toolbar" id="toolbar">
@@ -54,7 +54,7 @@
           <span class="status" id="translate-status" aria-live="polite"></span>
           <button type="button" id="ai-toggle" class="btn small ask" aria-pressed="true" aria-controls="ai-panel" hidden>
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12a8 8 0 0 1-11.6 7.1L4 20l.9-5.4A8 8 0 1 1 21 12Z"/><path d="M9 11h6M9 14h3.5"/></svg>
-            Ask AI
+            Ask Meet Memo
           </button>
         </div>
 
@@ -63,13 +63,13 @@
         <div id="segments"></div>
       </section>
 
-      <aside class="ai-panel" id="ai-panel" aria-label="Ask MeetMemo AI" hidden>
+      <aside class="ai-panel" id="ai-panel" aria-label="Ask Meet Memo" hidden>
         <div class="ai-head">
           <span class="ai-mark" aria-hidden="true">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a8 8 0 0 1-11.6 7.1L4 20l.9-5.4A8 8 0 1 1 21 12Z"/><path d="M9 11h6M9 14h3.5"/></svg>
           </span>
           <div class="titles">
-            <h2>Ask MeetMemo AI</h2>
+            <h2>Ask Meet Memo</h2>
             <p>Answers from this meeting's transcript only</p>
           </div>
           <button type="button" class="icon-btn" id="ai-new" title="New conversation" aria-label="New conversation">
@@ -95,13 +95,13 @@
       </aside>
 
       <!-- Live view only (?live=1): automatic answers to questions asked in the meeting (ai/livePanel.js). -->
-      <aside class="ai-panel live-panel" id="live-panel" aria-label="MeetMemo AI" hidden>
+      <aside class="ai-panel live-panel" id="live-panel" aria-label="Claude" hidden>
         <div class="ai-head">
           <span class="ai-mark" aria-hidden="true">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a8 8 0 0 1-11.6 7.1L4 20l.9-5.4A8 8 0 1 1 21 12Z"/><path d="M9 11h6M9 14h3.5"/></svg>
           </span>
           <div class="titles">
-            <h2>MeetMemo AI</h2>
+            <h2>Claude</h2>
             <p>Private answers to questions in this meeting</p>
           </div>
           <label class="switch" title="Answer questions automatically in this meeting">

@@ -240,6 +240,12 @@
   // to the durable queue first (bounded wait), then open this meeting's private transcript,
   // which follows the remaining upload and refreshes as lines are saved.
   self.MEETMEMO_SYNC = {
+    // The meeting this tab is in (null outside a meeting); used by the Claude switch
+    // (sync/claude-dock.js) so it addresses the same tab session as transcript sync.
+    currentMeeting() {
+      const code = meetingCode();
+      return code && !stopped ? meetingInfo(code) : null;
+    },
     async openTranscript({ ask = false } = {}) {
       const code = meetingCode();
       if (code) await flushAll(OPEN_FLUSH_TIMEOUT_MS);

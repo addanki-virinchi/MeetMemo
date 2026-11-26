@@ -14,7 +14,9 @@
 //      restores cards without replaying anything; completed cards also live on the backend.
 //
 // Storage:
-//   local   meetmemo_autoanswer:<uid>:<meetingId>  { on, at }  written by the live view
+//   local   meetmemo_autoanswer:<uid>:<meetingId>  { on, at }  written by the live view / Claude switch
+//   local   meetmemo_claude:<uid>                  { on, at }  account-wide Claude switch; adopted
+//           by a meeting that has no Auto-answer entry of its own yet
 //   session meetmemo_live:<uid>:<meetingId>        { uid, meetingId, cards: { [questionId]: card } }
 //
 // Work stops on sign-out or account switch, when Auto-answer is turned off, when the tab moves to
@@ -31,8 +33,15 @@
   const START_TIMEOUT_MS = 60_000; // a sleeping free-tier host can take ~50 s to wake up
   const GROWTH_WORDS = 3;
   const ENABLE_SLACK_MS = 1500;
+  // Claude switch in the Meet panel (sync/claude-dock.js): account-wide, so turning Claude on
+  // once covers later meetings too. A meeting's own Auto-answer entry, when present, wins.
+  const CLAUDE_PREFIX = 'meetmemo_claude:';
+  const MAP_PREFIX = 'meetmemo_map:'; // sync/worker.js meeting mapping, per account + tab session
+  const DOCK_CARDS = 3; // newest cards shown in the Meet panel; the live view has the rest
+  const HEALTH_TTL_MS = 60_000;
 
   const aaKey = (uid, meetingId) => `${AA_PREFIX}${uid}:${meetingId}`;
+  const claudeKey = (uid) => `${CLAUDE_PREFIX}${uid}`;
   const liveKey = (uid, meetingId) => `${LIVE_PREFIX}${uid}:${meetingId}`;
   const words = (s) => String(s || '').trim().split(/\s+/).filter(Boolean).length;
   const fail = (code, message, extra = {}) => Object.assign(new Error(message || code), { code, ...extra });
@@ -357,7 +366,14 @@
       try { mapping = await sync.ensureMeeting(user.uid, tab, meeting); } catch { return; }
       const key = liveKey(user.uid, mapping.meetingId);
       if (deleted.has(key)) return;
-      const aa = (await storage.get(aaKey(user.uid, mapping.meetingId)))[aaKey(user.uid, mapping.meetingId)];
+      const ak = aaKey(user.uid, mapping.meetingId);
+      let aa = (await storage.get(ak))[ak];
+      if (!aa) {
+        // No choice made for this meeting yet: follow the account-wide Claude switch, counting
+        // from when it was switched on, and record it so the live view shows the same state.
+        const g = (await storage.get(claudeKey(user.uid)))[claudeKey(user.uid)];
+        if (g?.on) { aa = { on: true, at: g.at || 0 }; await storage.set({ [ak]: aa }); }
+      }
       if (!aa?.on) return;
       if ((candidate.ts || 0) < (aa.at || 0) - ENABLE_SLACK_MS) return; // asked before Auto-answer was on
       if ((await authority.getUser())?.uid !== user.uid) return; // account switched meanwhile
@@ -407,10 +423,91 @@
       }
     }
 
-    return { handleCandidate, retry, onAccount, onStorageChange, cancelMeeting, recover, flush, _lanes: lanes, _states: states };
+    // ---- Claude in the Meet panel (sync/claude-dock.js) ----
+    const dockListeners = new Set();
+    const notifyDock = () => dockListeners.forEach((f) => { try { f(); } catch { /* listener gone */ } });
+    const serverInfo = new Map(); // meetingId -> { enabled: boolean | null }
+    let health = null; // { at, live: true | false | null (unknown) }
+
+    // /healthz names the features the deployed backend has; a build without "ai-live" is an
+    // outdated deployment, which is reported as such instead of as a per-question failure.
+    async function serverHasLive() {
+      if (health && now() - health.at < HEALTH_TTL_MS) return health.live;
+      let live = null;
+      try {
+        const res = await fetchImpl(`${baseUrl}/healthz`, { signal: AbortSignal.timeout(START_TIMEOUT_MS) });
+        const body = await res.json().catch(() => ({}));
+        if (res.ok) live = Array.isArray(body.features) && body.features.includes('ai-live');
+      } catch { /* unreachable or asleep: unknown, not outdated */ }
+      health = { at: now(), live };
+      return live;
+    }
+
+    async function mappingFor(uid, tab) {
+      const k = `${MAP_PREFIX}${uid}:${tab}`;
+      return (await storage.get(k))[k] || null;
+    }
+
+    // Asks the backend once per meeting whether AI is configured, and restores saved cards.
+    function loadServerInfo(uid, meetingId) {
+      if (serverInfo.has(meetingId)) return;
+      serverInfo.set(meetingId, { enabled: null });
+      getJson(uid, `/v1/meetings/${encodeURIComponent(meetingId)}/ai/live`).then(async (r) => {
+        if (r.status === 404 && r.body?.error === 'route_not_found') health = { at: now(), live: false };
+        if (r.status !== 200) { if (r.status >= 500 || r.status === 401) serverInfo.delete(meetingId); notifyDock(); return; }
+        serverInfo.set(meetingId, { enabled: r.body.enabled !== false });
+        const st = await stateFor(uid, meetingId);
+        let changed = false;
+        for (const c of r.body.cards || []) if (!st.cards[c.questionId]) { adopt(st, c); changed = true; }
+        if (!changed) notifyDock();
+      }).catch(() => { serverInfo.delete(meetingId); });
+    }
+
+    const visible = (c) => c.status === 'answering' || c.status === 'answered' || (c.status === 'error' && c.shown !== false);
+
+    async function dockState(tab) {
+      const user = await authority.getUser();
+      if (!user) return { signedIn: false };
+      const uid = user.uid;
+      const [mapping, g, live] = await Promise.all([mappingFor(uid, tab), storage.get(claudeKey(uid)), serverHasLive()]);
+      const out = { signedIn: true, on: !!g[claudeKey(uid)]?.on, meetingId: null, serverOutdated: live === false, enabled: null, cards: [] };
+      if (!mapping?.meetingId) return out;
+      const { meetingId } = mapping;
+      out.meetingId = meetingId;
+      const aa = (await storage.get(aaKey(uid, meetingId)))[aaKey(uid, meetingId)];
+      if (aa) out.on = !!aa.on;
+      if (!out.serverOutdated) loadServerInfo(uid, meetingId);
+      out.enabled = serverInfo.get(meetingId)?.enabled ?? null;
+      const st = await stateFor(uid, meetingId);
+      out.cards = Object.values(st.cards).filter(visible)
+        .sort((a, b) => (b.question?.ts || 0) - (a.question?.ts || 0))
+        .slice(0, DOCK_CARDS)
+        .map((c) => ({ questionId: c.questionId, status: c.status, question: c.question, answer: c.answer || '', errorCode: c.errorCode || null }));
+      return out;
+    }
+
+    // The Meet panel's Claude switch: account-wide, and applied to this meeting at once. Turning
+    // it on before the meeting exists on the backend creates it (the user asked for answers).
+    async function dockSet(tab, meeting, on) {
+      const user = await authority.getUser();
+      if (!user) return false;
+      const at = now();
+      await storage.set({ [claudeKey(user.uid)]: { on: !!on, at } });
+      let mapping = await mappingFor(user.uid, tab);
+      if (!mapping && on && meeting?.sessionId) {
+        try { mapping = await sync.ensureMeeting(user.uid, tab, meeting); } catch { mapping = null; } // adopted on the first question
+      }
+      if ((await authority.getUser())?.uid !== user.uid) return false;
+      if (mapping?.meetingId) await storage.set({ [aaKey(user.uid, mapping.meetingId)]: { on: !!on, at } });
+      return true;
+    }
+
+    const onDockChange = (f) => { dockListeners.add(f); return () => dockListeners.delete(f); };
+
+    return { handleCandidate, retry, onAccount, onStorageChange, cancelMeeting, recover, flush, dockState, dockSet, onDockChange, _lanes: lanes, _states: states };
   }
 
-  self.MeetMemoLive = { createLiveEngine, readSse, aaKey, liveKey, AA_PREFIX, LIVE_PREFIX };
+  self.MeetMemoLive = { createLiveEngine, readSse, aaKey, liveKey, claudeKey, AA_PREFIX, LIVE_PREFIX, CLAUDE_PREFIX };
 
   // ---- wiring (skipped by tests that load this file with MEETMEMO_SYNC_NO_AUTOSTART) ----
   if (self.MEETMEMO_SYNC_NO_AUTOSTART || !self.chrome?.runtime?.onConnect || !self.MeetMemoSync) return;
@@ -444,7 +541,53 @@
     if (msg?.type !== 'meetmemo-live-retry' || sender.id !== chrome.runtime.id) return;
     live.retry(msg).catch((e) => console.warn('[MeetMemo live] retry failed', e?.message));
   });
-  authority.onChange((user) => live.onAccount(user));
+  // Claude in the Meet panel: the tab watches its meeting's state and flips the switch through
+  // this port; the worker stays the only reader of the session store and the only writer.
+  const docks = new Set(); // { port, tab, meeting }
+  let pushTimer = null;
+  async function push(d) {
+    if (!d.tab) return;
+    try {
+      const state = await live.dockState(d.tab);
+      if (docks.has(d)) d.port.postMessage({ type: 'state', ...state });
+    } catch (err) {
+      if (docks.has(d)) console.warn('[MeetMemo live] Claude panel update failed:', err?.message);
+    }
+  }
+  function pushAll() {
+    if (pushTimer || !docks.size) return;
+    pushTimer = setTimeout(() => { pushTimer = null; docks.forEach(push); }, 150); // streaming writes are batched too
+  }
+  chrome.runtime.onConnect.addListener((port) => {
+    if (port.name !== 'meetmemo-claude' || port.sender?.id !== chrome.runtime.id) return;
+    const d = { port, tab: null, meeting: null };
+    docks.add(d);
+    port.onDisconnect.addListener(() => docks.delete(d));
+    port.onMessage.addListener(async (msg) => {
+      try {
+        if (msg?.type === 'watch' && msg.meeting?.sessionId) {
+          d.tab = String(msg.meeting.sessionId);
+          d.meeting = msg.meeting;
+          await push(d);
+        } else if (msg?.type === 'set' && d.tab) {
+          await live.dockSet(d.tab, d.meeting, msg.on === true);
+          await push(d);
+        } else if (msg?.type === 'retry' && d.tab && msg.questionId) {
+          const st = await live.dockState(d.tab);
+          if (st.meetingId) await live.retry({ meetingId: st.meetingId, questionId: String(msg.questionId) });
+        }
+      } catch (err) {
+        console.warn('[MeetMemo live] Claude panel request failed:', err?.message);
+      }
+    });
+  });
+  const DOCK_KEYS = [AA_PREFIX, LIVE_PREFIX, CLAUDE_PREFIX, MAP_PREFIX];
+  chrome.storage.onChanged.addListener((changes) => {
+    if (Object.keys(changes).some((k) => DOCK_KEYS.some((p) => k.startsWith(p)))) pushAll();
+  });
+  live.onDockChange(pushAll);
+
+  authority.onChange((user) => { live.onAccount(user); pushAll(); });
   chrome.storage.onChanged.addListener((changes, area) => live.onStorageChange(changes, area));
   live.recover().catch((e) => console.warn('[MeetMemo live] recovery failed', e?.message));
 })();

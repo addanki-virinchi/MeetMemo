@@ -19,7 +19,7 @@
 //   aa(Ite) "/invite" ......................................... -> unavailable: invite
 //   anything else ............................................. -> unavailable: hosted
 //   Za("share-button") ........ -> this meeting's saved transcript (via sync/content.js)
-//   Za("ask-ai") .............. -> this meeting's transcript with Ask AI open (via sync/content.js)
+//   Za("ask-ai") .............. -> this meeting's transcript with Ask Meet Memo open (via sync/content.js)
 //   Za("screenshot-button"), Za("minimised-screenshot-button") -> unavailable: screenshots
 //   Vw("unsaved-transcript") .. -> unavailable: unsaved-transcripts
 //   Za/Vw other sources (widget-header, transcript-notification, must-relogin-popover,
@@ -47,7 +47,7 @@
     'screenshot-button': 'screenshots',
     'minimised-screenshot-button': 'screenshots',
     'unsaved-transcript': 'unsaved-transcripts',
-    // Ask MeetMemo AI while a local account is signed in: AI is hosted-only, so explain that
+    // The Claude tab while a local account is signed in: AI is hosted-only, so explain that
     // instead of showing the hosted "Signed out" popover to someone who is signed in.
     'ask-ai': 'ai',
   };
@@ -61,7 +61,7 @@
   }
 
   function signIn(source) {
-    // Ask MeetMemo AI from the meeting panel: open this meeting's transcript with the Ask AI
+    // The Claude tab in the meeting panel: open this meeting's transcript with the Ask Meet Memo
     // panel focused. Outside a meeting tab (no MEETMEMO_SYNC) it falls through to the
     // explanation page below.
     if (source === 'ask-ai' && self.MEETMEMO_SYNC) return self.MEETMEMO_SYNC.openTranscript({ ask: true });

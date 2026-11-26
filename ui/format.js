@@ -60,7 +60,7 @@
     return h % 6;
   }
 
-  // Languages offered for reading/translating transcripts and for Ask MeetMemo AI answers.
+  // Languages offered for reading/translating transcripts and for Ask Meet Memo answers.
   // Whether a pair is actually available is checked at runtime (Chrome's on-device Translator).
   const LANGUAGES = [
     ['ar', 'Arabic'], ['bn', 'Bengali'], ['bg', 'Bulgarian'], ['zh', 'Chinese (Simplified)'], ['zh-Hant', 'Chinese (Traditional)'],
@@ -73,7 +73,7 @@
   ].map(([code, name]) => ({ code, name }));
   const languageName = (code) => LANGUAGES.find((l) => l.code === code)?.name || code;
 
-  // User preferences shared by the settings page, the transcript reader and Ask AI.
+  // User preferences shared by the settings page, the transcript reader and Ask Meet Memo.
   const PREFS_KEY = 'meetmemo_prefs';
   const DEFAULT_PREFS = { readingLanguage: '', aiLanguage: '', aiPanelOpen: true };
   async function getPrefs() {

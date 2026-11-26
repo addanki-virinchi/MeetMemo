@@ -1,4 +1,4 @@
-// Ask MeetMemo AI panel for the transcript reader (transcript.html).
+// Ask Meet Memo panel for the transcript reader (transcript.html).
 //
 // Questions go to the MeetMemo backend, which answers with Claude from this meeting's saved
 // transcript (backend/src/routes/aiRouter.js). The panel never talks to Anthropic directly and
@@ -34,17 +34,17 @@ const ICON = {
 
 // Wording for every error code the backend or the network can produce.
 const ERRORS = {
-  ai_unavailable: ["Ask AI isn't available", "Ask AI isn't set up on the MeetMemo server right now."],
-  ai_busy: ['MeetMemo AI is busy', 'Too many people are asking right now. Try again in a minute.'],
-  ai_unreachable: ["Couldn't reach MeetMemo AI", 'Try again in a moment.'],
+  ai_unavailable: ["Ask Meet Memo isn't available", "Ask Meet Memo isn't set up on the MeetMemo server right now."],
+  ai_busy: ['Ask Meet Memo is busy', 'Too many people are asking right now. Try again in a minute.'],
+  ai_unreachable: ["Couldn't reach Ask Meet Memo", 'Try again in a moment.'],
   ai_declined: ["Couldn't answer this question", 'Try asking it a different way.'],
   empty_answer: ['No answer came back', 'Try again or rephrase the question.'],
   ai_failed: ['Something went wrong', 'The answer could not be finished. Try again.'],
   ai_rate_limited: ['Question limit reached', "You've asked a lot of questions in a short time. Try again in a few minutes."],
   no_transcript: ['Nothing to ask about yet', 'This meeting has no saved lines yet.'],
-  transcript_too_long: ['Transcript too long', 'This transcript is too long for Ask AI.'],
+  transcript_too_long: ['Transcript too long', 'This transcript is too long for Ask Meet Memo.'],
   not_found: ['Meeting not found', 'This meeting was deleted or belongs to another account.'],
-  route_not_found: ['Ask AI not available on this server', "The MeetMemo server you're connected to doesn't have Ask AI yet. Deploy the latest backend, then try again."],
+  route_not_found: ['Ask Meet Memo not available on this server', "The MeetMemo server you're connected to doesn't have Ask Meet Memo yet. Deploy the latest backend, then try again."],
   thread_not_found: ['Conversation not found', 'It may have been deleted. Your question will start a new conversation.'],
   unauthenticated: ['Signed out', 'Sign in from the MeetMemo popup, then ask again.'],
   network: ["Can't reach the MeetMemo server", 'If it was idle it can take up to a minute to wake up. Try again shortly.'],
@@ -195,7 +195,7 @@ export function createAskPanel({ api, meetingId, live = false, lookup, onCite })
     const w = el('div', 'who');
     const mark = el('span', 'ai-mark');
     mark.append(svg(ICON.chat));
-    w.append(mark, 'MeetMemo AI');
+    w.append(mark, 'Ask Meet Memo');
     if (note) w.append(el('span', 'note', `· ${note}`));
     return w;
   }
@@ -213,13 +213,13 @@ export function createAskPanel({ api, meetingId, live = false, lookup, onCite })
   function renderEmpty() {
     const box = el('div', 'ai-empty');
     if (enabled === false) {
-      box.append(el('h3', '', "Ask AI isn't available"), el('p', '', "It isn't set up on the MeetMemo server right now. Your transcript is unaffected."));
+      box.append(el('h3', '', "Ask Meet Memo isn't available"), el('p', '', "It isn't set up on the MeetMemo server right now. Your transcript is unaffected."));
       thread.append(box);
       return;
     }
     box.append(
       el('h3', '', 'Ask anything about this meeting'),
-      el('p', '', 'MeetMemo AI reads this transcript and answers with links to the lines it used. It only knows what was said in this meeting.'),
+      el('p', '', 'Ask Meet Memo reads this transcript and answers with links to the lines it used. It only knows what was said in this meeting.'),
       el('p', 'label', 'Try asking'),
     );
     const list = el('div', 'suggest');
@@ -230,7 +230,7 @@ export function createAskPanel({ api, meetingId, live = false, lookup, onCite })
       list.append(b);
     }
     const privacy = el('p', 'ai-privacy');
-    const link = el('a', '', 'How Ask AI uses your data');
+    const link = el('a', '', 'How Ask Meet Memo uses your data');
     link.href = 'privacy.html#ai';
     link.target = '_blank';
     privacy.append("Your question and this meeting's transcript are sent to Anthropic's Claude to write the answer. ", link);
@@ -321,7 +321,7 @@ export function createAskPanel({ api, meetingId, live = false, lookup, onCite })
     send.replaceChildren(svg(busy ? ICON.stop : ICON.send));
     send.disabled = !busy && (blocked || !input.value.trim());
     input.disabled = blocked;
-    input.placeholder = enabled === false ? 'Ask AI is not available' : 'Ask about this meeting…';
+    input.placeholder = enabled === false ? 'Ask Meet Memo is not available' : 'Ask about this meeting…';
   }
 
   // ---- asking ----
@@ -452,7 +452,7 @@ export function createAskPanel({ api, meetingId, live = false, lookup, onCite })
       if (myGen !== gen) return;
       if (e?.status === 404) enabled = enabled ?? true;
       // History is optional: asking still works, so only log.
-      console.warn('[MeetMemo] Could not load Ask AI history', e?.message || e);
+      console.warn('[MeetMemo] Could not load Ask Meet Memo history', e?.message || e);
     }
     render();
   }

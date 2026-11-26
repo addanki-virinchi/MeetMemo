@@ -13,9 +13,9 @@ const { createApp } = await import('./app.js');
 const { checkFirestore } = await import('./firebase.js');
 const server = createApp().listen(config.port, () => {
   logger.info({ port: config.port, env: config.env }, 'MeetMemo API listening');
-  if (!config.ai.enabled) logger.info('Ask AI is switched off (AI_ENABLED=false)');
-  else if (!config.ai.apiKey) logger.warn('Ask AI is off: ANTHROPIC_API_KEY is not set');
-  else logger.info({ model: config.ai.model }, 'Ask AI enabled');
+  if (!config.ai.enabled) logger.info('Claude AI is switched off (AI_ENABLED=false)');
+  else if (!config.ai.apiKey) logger.warn('Claude AI is off: ANTHROPIC_API_KEY is not set');
+  else logger.info({ model: config.ai.model }, 'Claude AI enabled');
 });
 
 // Surface Firestore problems at boot instead of on the first transcript save.

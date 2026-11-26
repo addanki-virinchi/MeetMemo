@@ -2,14 +2,14 @@ import Anthropic from '@anthropic-ai/sdk';
 
 // User-facing wording for every way an answer can fail. Codes are stable; the panel keys off them.
 export const AI_MESSAGES = {
-  ai_unavailable: "Ask AI isn't set up on this server right now.",
-  ai_busy: 'MeetMemo AI is busy right now. Try again in a minute.',
-  ai_unreachable: "Couldn't reach MeetMemo AI. Try again in a moment.",
-  ai_declined: "MeetMemo AI couldn't answer this question. Try asking it a different way.",
+  ai_unavailable: "Claude isn't set up on this server right now.",
+  ai_busy: 'Claude is busy right now. Try again in a minute.',
+  ai_unreachable: "Couldn't reach Claude. Try again in a moment.",
+  ai_declined: "Claude couldn't answer this question. Try asking it a different way.",
   empty_answer: 'No answer came back. Try again or rephrase the question.',
   ai_failed: 'Something went wrong while answering. Try again.',
-  ai_timeout: 'MeetMemo AI took too long to answer. Try again.',
-  ai_live_busy: 'MeetMemo AI is still answering earlier questions from this meeting.',
+  ai_timeout: 'Claude took too long to answer. Try again.',
+  ai_live_busy: 'Claude is still answering earlier questions from this meeting.',
   stopped: 'The answer was stopped before it finished.',
 };
 

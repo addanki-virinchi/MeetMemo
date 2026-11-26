@@ -1,4 +1,4 @@
-// Ask MeetMemo AI on the extension side: the streaming API client and the in-meeting entry point.
+// Ask Meet Memo on the extension side: the streaming API client and the in-meeting entry point.
 // The panel's backend contract is covered in backend/test/ai.test.js.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
@@ -67,7 +67,7 @@ test('AI-CLIENT-03: stopping aborts the request', async () => {
   assert.equal(fetchSignal.aborted, true);
 });
 
-test('AI-ROUTE-01: Ask MeetMemo AI in a meeting opens that transcript with the panel', async () => {
+test('AI-ROUTE-01: the Claude tab in a meeting opens that transcript with the panel', async () => {
   const browser = createBrowser();
   const chromeApi = browser.chromeFor();
   const sent = [];

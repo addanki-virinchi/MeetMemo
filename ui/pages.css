@@ -190,7 +190,7 @@ h1.page-title { font: 650 28px/1.2 var(--font-display); letter-spacing: -0.02em;
 .segment { border-radius: 8px; transition: background-color .5s, box-shadow .5s; }
 .segment.cited { background: var(--accent-soft); box-shadow: 0 0 0 6px var(--accent-soft); }
 
-/* ---- transcript workspace + Ask MeetMemo AI panel ---- */
+/* ---- transcript workspace + Ask Meet Memo panel ---- */
 .topnav.wide .inner, main.wide { max-width: 1280px; }
 .workspace { display: grid; grid-template-columns: minmax(0, 1fr) 420px; gap: 32px; align-items: start; }
 /* One column only when no side panel is visible (the live view keeps the Ask panel hidden). */
@@ -277,7 +277,7 @@ body.panel-closed .ai-panel { display: none; }
 .composer-foot { display: flex; justify-content: space-between; gap: 12px; margin-top: 7px; font-size: 11.5px; color: var(--muted); }
 @media (prefers-color-scheme: dark) { .send { color: #141518; } }
 
-/* Narrow windows: Transcript / Ask AI tabs instead of two columns */
+/* Narrow windows: Transcript / Ask Meet Memo tabs instead of two columns */
 .view-tabs { display: none; }
 @media (max-width: 1080px) {
   .workspace, body.panel-closed .workspace { grid-template-columns: minmax(0, 1fr); }
@@ -357,7 +357,7 @@ details.faq .answer p:last-child { margin-bottom: 0; }
   .segment.cont .time { opacity: 1; }
 }
 
-/* ---- MeetMemo AI live panel (transcript.html?live=1, ai/livePanel.js) ---- */
+/* ---- Claude live panel (transcript.html?live=1, ai/livePanel.js) ---- */
 .live-panel .ai-head { gap: 10px; }
 .switch { display: inline-flex; align-items: center; gap: 8px; flex: none; cursor: pointer; font-size: 13px; font-weight: 600; color: var(--ink-2); user-select: none; }
 .switch input { position: absolute; opacity: 0; width: 1px; height: 1px; }

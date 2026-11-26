@@ -11,8 +11,8 @@
 //   built-in Translator (when the browser has it). The saved transcript is never changed and
 //   no text is sent to the MeetMemo server or any other service for translation.
 //
-// - Beside the transcript: in the live view (?live=1) the MeetMemo AI panel (ai/livePanel.js)
-//   with automatic answers to questions asked in the meeting; for a saved meeting, Ask MeetMemo AI
+// - Beside the transcript: in the live view (?live=1) the Claude panel (ai/livePanel.js)
+//   with automatic answers to questions asked in the meeting; for a saved meeting, Ask Meet Memo
 //   (ai/askPanel.js). This file only tells the panel who is signed in and when a transcript is
 //   shown, and scrolls to a line when an answer cites it.
 import { createAuthProvider, createClient } from './extension-auth/index.js';
@@ -27,7 +27,7 @@ const $ = (id) => document.getElementById(id);
 const params = new URLSearchParams(location.search);
 const meetingId = params.get('id');
 const live = params.get('live') === '1';
-let askFocus = params.get('ask') === '1'; // opened from an "Ask AI" button: open the panel once
+let askFocus = params.get('ask') === '1'; // opened from an "Ask Meet Memo" button: open the panel once
 
 // Rendered lines by segment id, for the citation chips in AI answers.
 const segIndex = new Map(); // id -> { row, time, speaker, text }

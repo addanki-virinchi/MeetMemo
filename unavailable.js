@@ -7,7 +7,7 @@ const FEATURES = {
   invite: ['Invites', 'Invites are not available', 'Inviting teammates is not part of this version of MeetMemo.'],
   screenshots: ['Screenshots', 'Screenshots are not available', 'MeetMemo saves caption text only. Screenshots of the meeting are not captured or stored.'],
   'unsaved-transcripts': ['Older transcripts', 'This list is from an earlier version', 'Meetings captured while you were signed in were saved automatically; you will find them under Meetings.'],
-  ai: ['Ask MeetMemo AI', 'Ask AI works on saved meetings', 'Open a meeting under Meetings and use Ask AI beside its transcript. During a Google Meet call, the panel\'s Ask MeetMemo AI button opens it for that meeting.'],
+  ai: ['Ask Meet Memo', 'Ask Meet Memo works on saved meetings', 'Open a meeting under Meetings and use Ask Meet Memo beside its transcript. During a Google Meet call, turn on the Claude switch in the panel to get answers as questions are asked.'],
   help: ['Help', 'Looking for help?', 'Open Help for guides and troubleshooting.'],
   hosted: ['Not available', 'This feature is not available', 'It is not part of the current version of MeetMemo.'],
 };

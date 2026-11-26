@@ -1,4 +1,4 @@
-// Settings page: account, language preferences (reading/translation and Ask AI), data links and
+// Settings page: account, language preferences (reading/translation and Ask Meet Memo), data links and
 // a server connection check. Preferences live in chrome.storage.local (MeetMemoFormat.PREFS_KEY).
 import { settings, createAuthProvider } from './extension-auth/index.js';
 
@@ -38,7 +38,7 @@ async function initPreferences() {
   });
   $('ai-language').addEventListener('change', async (e) => {
     await F.setPrefs({ aiLanguage: e.target.value });
-    flash(e.target.value ? `Saved. Ask AI will answer in ${F.languageName(e.target.value)}.` : 'Saved. Ask AI will answer in the language you ask in.');
+    flash(e.target.value ? `Saved. Ask Meet Memo will answer in ${F.languageName(e.target.value)}.` : 'Saved. Ask Meet Memo will answer in the language you ask in.');
   });
 
   const support = $('translator-support');

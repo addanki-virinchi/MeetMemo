@@ -1,4 +1,4 @@
-// Ask MeetMemo AI routes against the in-memory Firestore fake and a fake Anthropic client.
+// Ask Meet Memo routes against the in-memory Firestore fake and a fake Anthropic client.
 // No credentials or network are used. Run with: npm test (from backend/).
 import { test, before, after, beforeEach } from 'node:test';
 import assert from 'node:assert/strict';

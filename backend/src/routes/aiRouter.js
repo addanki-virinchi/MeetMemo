@@ -9,7 +9,7 @@ import { createCitationRewriter, citationsToLines } from '../ai/citations.js';
 import { AI_MESSAGES, mapAiError } from '../ai/errors.js';
 import { createLiveRouter } from './aiLiveRouter.js';
 
-// Ask MeetMemo AI: questions about one meeting, answered by Claude from that meeting's saved
+// Ask Meet Memo: questions about one meeting, answered by Claude from that meeting's saved
 // transcript. Mounted at /v1/meetings/:id/ai behind requireAuth.
 //
 // Storage (deleted with the meeting by DELETE /v1/meetings/:id, which is recursive):
@@ -80,7 +80,7 @@ export function createAiRouter({
       const last = snap.docs[snap.size - 1];
       cursor = { ts: last.data().ts, id: last.id };
     }
-    throw httpError(413, 'transcript_too_long', 'This transcript is too long for Ask AI.');
+    throw httpError(413, 'transcript_too_long', 'This transcript is too long for Ask Meet Memo.');
   }
 
   // Earlier completed exchanges, oldest first, as Claude saw them (line ids, not markers).
@@ -200,7 +200,7 @@ export function createAiRouter({
     if (!segments.length) throw httpError(409, 'no_transcript', 'This meeting has no saved lines yet, so there is nothing to ask about.');
     const timeZone = resolveTimeZone(body.timeZone);
     const ctx = buildTranscriptContext(meetingSnap.data(), segments, { timeZone });
-    if (ctx.text.length > MAX_CONTEXT_CHARS) throw httpError(413, 'transcript_too_long', 'This transcript is too long for Ask AI.');
+    if (ctx.text.length > MAX_CONTEXT_CHARS) throw httpError(413, 'transcript_too_long', 'This transcript is too long for Ask Meet Memo.');
 
     // Save the question first, so it is kept even if answering fails.
     const startedAt = now();
@@ -275,7 +275,7 @@ export function createAiRouter({
         const mapped = mapAiError(err);
         status = 'error';
         errorCode = mapped.code;
-        logger[mapped.log]({ meetingId: meetingRef.id, threadId: threadRef.id, status: err?.status, name: err?.constructor?.name }, 'Ask AI request failed');
+        logger[mapped.log]({ meetingId: meetingRef.id, threadId: threadRef.id, status: err?.status, name: err?.constructor?.name }, 'Ask Meet Memo request failed');
       }
     }
     finished = true;
@@ -287,10 +287,10 @@ export function createAiRouter({
       });
       await threadRef.update({ updatedAt: FieldValue.serverTimestamp() });
     } catch (err) {
-      logger.error({ meetingId: meetingRef.id, threadId: threadRef.id, code: err.code }, 'Could not save Ask AI answer');
+      logger.error({ meetingId: meetingRef.id, threadId: threadRef.id, code: err.code }, 'Could not save Ask Meet Memo answer');
     }
     // Ids, status and token counts only: never question, transcript or answer text.
-    logger.info({ meetingId: meetingRef.id, threadId: threadRef.id, status, stopReason, usage, lines: ctx.lineCount, ms: now() - startedAt }, 'Ask AI answer');
+    logger.info({ meetingId: meetingRef.id, threadId: threadRef.id, status, stopReason, usage, lines: ctx.lineCount, ms: now() - startedAt }, 'Ask Meet Memo answer');
 
     if (status === 'error') write('error', { code: errorCode, message: AI_MESSAGES[errorCode] || AI_MESSAGES.ai_failed, answerId: answerRef.id });
     else write('done', { answerId: answerRef.id, status, stopReason });

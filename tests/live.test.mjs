@@ -154,6 +154,7 @@ function backend() {
     const body = opts.body ? JSON.parse(opts.body) : null;
     const uid = (opts.headers?.Authorization || '').replace('Bearer tok-', '');
     st.requests.push({ method: opts.method || 'GET', path: u.pathname, body, uid, signal: opts.signal });
+    if (u.pathname === '/healthz') return json(200, st.health ?? { ok: true, features: ['ai-ask', 'ai-live'] });
     if (u.pathname.startsWith('/v1/auth/')) return json(200, { uid: 'A', idToken: 'tok-A', refreshToken: 'r-A', expiresIn: 3600 });
     if (!uid) return json(401, { error: 'unauthenticated' });
     if (u.pathname === '/v1/meetings' && opts.method === 'POST') {
@@ -175,6 +176,7 @@ function backend() {
       if (!own) return json(404, { error: 'not_found', message: 'Meeting not found' });
       return sse([['card', { questionId: body.questionId }], ['delta', { text: 'Answer.' }], ['sources', { ids: [] }], ['done', { status: 'answered' }]]);
     }
+    if (m && m[2] === '/ai/live' && !opts.method) return own ? json(200, { enabled: st.aiEnabled ?? true, model: 'm', cards: [] }) : json(404, { error: 'not_found', message: 'Meeting not found' });
     if (m && !m[2]) return own ? json(200, { id: m[1], ownerId: uid }) : json(404, { error: 'not_found', message: 'Meeting not found' });
     throw new Error(`unexpected ${opts.method} ${u.pathname}`);
   };
@@ -369,4 +371,81 @@ test('LIVE-CLIENT-01: an outdated server 404 is route_not_found, a real one stay
   await assert.rejects(mk(404, { error: 'not_found' }).listLiveCards('m1'), (e) => e.code === 'route_not_found');
   await assert.rejects(mk(404, { error: 'route_not_found', message: 'x' }).listLiveCards('m1'), (e) => e.code === 'route_not_found');
   await assert.rejects(mk(404, { error: 'not_found', message: 'Meeting not found' }).listLiveCards('m1'), (e) => e.code === 'not_found');
+});
+
+// ---------------------------------------------------------------- Claude in the Meet panel
+
+// The Meet tab's side of the "meetmemo-claude" port (what sync/claude-dock.js sends and gets).
+function claudeDock(s, { sessionId = 'tab-1', code = 'abc-defg-hij' } = {}) {
+  const port = s.browser.chromeFor({ url: `https://meet.google.com/${code}`, tab: { id: 7 } }).runtime.connect({ name: 'meetmemo-claude' });
+  const states = [];
+  port.onMessage.addListener((m) => { if (m.type === 'state') states.push(m); });
+  port.postMessage({ type: 'watch', meeting: { sessionId, platform: 'googlemeet', meetingCode: code, title: 't' } });
+  return { port, states, last: () => states.at(-1), set: (on) => port.postMessage({ type: 'set', on }) };
+}
+
+test('LIVE-DOCK-01: the Claude switch in the Meet panel turns answers on and streams them into the panel', async () => {
+  const s = await liveSetup({ autoAnswer: false });
+  const d = claudeDock(s);
+  assert.ok(await waitFor(() => d.last()?.meetingId === s.meetingId), 'state for the canonical meeting');
+  assert.equal(d.last().signedIn, true);
+  assert.equal(d.last().on, false, 'off until the user turns it on');
+  assert.equal(d.last().serverOutdated, false);
+
+  d.set(true);
+  assert.ok(await waitFor(() => d.last()?.on === true));
+  assert.equal(s.browser.local.data.get('meetmemo_claude:A').on, true, 'account-wide switch');
+  assert.equal(s.browser.local.data.get(`meetmemo_autoanswer:A:${s.meetingId}`).on, true, 'this meeting, same state as the live view');
+  assert.ok(await waitFor(() => d.last()?.enabled === true), 'server reports Claude is configured');
+
+  s.tab.speak('cap/5', 'what is the rollback plan if the migration fails', 1, 'Priya');
+  const qid = await s.seg('cap/5');
+  assert.ok(await waitFor(() => d.last()?.cards?.[0]?.status === 'answered'), 'answer reaches the panel without a click');
+  assert.equal(d.last().cards[0].questionId, qid);
+  assert.equal(d.last().cards[0].answer, 'Answer.');
+  assert.equal(d.last().cards[0].question.speaker, 'Priya');
+
+  d.set(false);
+  assert.ok(await waitFor(() => d.last()?.on === false));
+  assert.equal(s.browser.local.data.get(`meetmemo_autoanswer:A:${s.meetingId}`).on, false);
+  const before = s.be.ai().length;
+  s.tab.speak('cap/6', 'should we move the launch to February', 1, 'Priya');
+  await new Promise((r) => setTimeout(r, 1000));
+  assert.equal(s.be.ai().length, before, 'off: nothing is sent');
+});
+
+test('LIVE-DOCK-02: a later meeting follows the account-wide Claude switch with no click', async () => {
+  const s = await liveSetup({ autoAnswer: false });
+  await s.browser.local.set({ 'meetmemo_claude:A': { on: true, at: Date.now() } });
+  s.tab.speak('cap/7', 'should we move the launch to February', 1, 'Priya');
+  const qid = await s.seg('cap/7');
+  assert.ok(await waitFor(() => s.cards()[qid]?.status === 'answered'), 'answered automatically');
+  assert.equal(s.browser.local.data.get(`meetmemo_autoanswer:A:${s.meetingId}`).on, true, 'recorded for this meeting');
+
+  // A meeting turned off on its own stays off even while the account-wide switch is on.
+  await s.browser.local.set({ [`meetmemo_autoanswer:A:${s.meetingId}`]: { on: false, at: Date.now() } });
+  const before = s.be.ai().length;
+  s.tab.speak('cap/8', 'what is the budget for this quarter', 1, 'Priya');
+  await new Promise((r) => setTimeout(r, 1000));
+  assert.equal(s.be.ai().length, before);
+});
+
+test('LIVE-DOCK-03: an outdated backend is reported as outdated, not as a failed question', async () => {
+  const s = await liveSetup({ autoAnswer: false });
+  s.be.st.health = { ok: true }; // a deployment from before the AI routes
+  const d = claudeDock(s);
+  assert.ok(await waitFor(() => d.last()?.meetingId === s.meetingId));
+  assert.equal(d.last().serverOutdated, true);
+});
+
+test('LIVE-DOCK-04: signed out, the panel is told so and nothing is written', async () => {
+  const browser = createBrowser();
+  const be = backend();
+  startWorker(browser, be);
+  const d = claudeDock({ browser });
+  assert.ok(await waitFor(() => d.last()));
+  assert.equal(d.last().signedIn, false);
+  d.set(true);
+  await settle(30);
+  assert.equal([...browser.local.data.keys()].filter((k) => k.startsWith('meetmemo_claude:') || k.startsWith('meetmemo_autoanswer:')).length, 0);
 });

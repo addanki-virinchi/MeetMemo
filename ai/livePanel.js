@@ -1,4 +1,4 @@
-// MeetMemo AI panel for the live view (transcript.html?live=1): automatic, private answers to
+// Claude panel for the live view (transcript.html?live=1): automatic, private answers to
 // questions asked in the meeting.
 //
 // The panel only shows and controls; it never sends a question itself. The service worker
@@ -14,6 +14,7 @@ const $ = (id) => document.getElementById(id);
 const NARROW = '(max-width: 1080px)';
 const AA_PREFIX = 'meetmemo_autoanswer:';
 const LIVE_PREFIX = 'meetmemo_live:';
+const CLAUDE_PREFIX = 'meetmemo_claude:';
 
 const el = (tag, cls, text) => {
   const e = document.createElement(tag);
@@ -23,13 +24,13 @@ const el = (tag, cls, text) => {
 };
 
 const ERRORS = {
-  ai_unavailable: "MeetMemo AI isn't set up on the server right now.",
-  ai_busy: 'MeetMemo AI is busy. Try again in a minute.',
+  ai_unavailable: "Claude isn't set up on the server right now.",
+  ai_busy: 'Claude is busy. Try again in a minute.',
   ai_live_busy: 'Still answering earlier questions. Try again in a moment.',
   ai_rate_limited: 'Many questions were detected in a short time, so auto-answer paused for a few minutes.',
-  ai_unreachable: "Couldn't reach MeetMemo AI. Try again.",
-  ai_timeout: 'MeetMemo AI took too long to answer. Try again.',
-  ai_declined: "MeetMemo AI couldn't answer this one.",
+  ai_unreachable: "Couldn't reach Claude. Try again.",
+  ai_timeout: 'Claude took too long to answer. Try again.',
+  ai_declined: "Claude couldn't answer this one.",
   empty_answer: 'No answer came back. Try again.',
   stream_cut: 'The connection dropped before the answer finished.',
   stopped: 'Stopped before the answer finished.',
@@ -45,8 +46,8 @@ export function createLivePanel({ meetingId, api, lookup, onCite }) {
   const toggle = $('auto-answer');
   const tabs = document.querySelector('.view-tabs');
   const aiTab = tabs?.querySelector('[data-view="ai"]');
-  if (aiTab) { aiTab.textContent = 'MeetMemo AI'; aiTab.setAttribute('aria-controls', 'live-panel'); }
-  $('ai-toggle')?.setAttribute('hidden', ''); // the legacy Ask AI button is not part of the live workflow
+  if (aiTab) { aiTab.textContent = 'Claude'; aiTab.setAttribute('aria-controls', 'live-panel'); }
+  $('ai-toggle')?.setAttribute('hidden', ''); // the Ask Meet Memo button is not part of the live workflow
 
   let user = null;
   let gen = 0;
@@ -61,6 +62,7 @@ export function createLivePanel({ meetingId, api, lookup, onCite }) {
 
   const aaKey = () => `${AA_PREFIX}${user.uid}:${meetingId}`;
   const liveKey = () => `${LIVE_PREFIX}${user.uid}:${meetingId}`;
+  const claudeKey = () => `${CLAUDE_PREFIX}${user.uid}`;
   const narrow = () => matchMedia(NARROW).matches;
 
   function setView(view) {
@@ -85,10 +87,11 @@ export function createLivePanel({ meetingId, api, lookup, onCite }) {
 
   async function load() {
     const myGen = gen;
-    const store = await chrome.storage.local.get(aaKey());
+    const store = await chrome.storage.local.get([aaKey(), claudeKey()]);
     const session = await chrome.storage.session.get(liveKey());
     if (myGen !== gen) return;
-    autoOn = !!store[aaKey()]?.on;
+    // No choice for this meeting yet: the account-wide Claude switch decides (as in the worker).
+    autoOn = !!(store[aaKey()] ?? store[claudeKey()])?.on;
     readLive(session[liveKey()]);
     render();
     try {
@@ -99,7 +102,7 @@ export function createLivePanel({ meetingId, api, lookup, onCite }) {
     } catch (e) {
       if (myGen !== gen || e?.code === 'account_changed') return;
       if (e?.code === 'route_not_found') routeMissing = true;
-      else console.warn('[MeetMemo] Could not load MeetMemo AI cards', e?.message || e);
+      else console.warn('[MeetMemo] Could not load Claude cards', e?.message || e);
     }
     render();
   }
@@ -115,7 +118,9 @@ export function createLivePanel({ meetingId, api, lookup, onCite }) {
     const on = toggle.checked;
     autoOn = on;
     // `at` lets the worker ignore questions that were asked before Auto-answer was turned on.
-    await chrome.storage.local.set({ [aaKey()]: { on, at: Date.now() } });
+    // Also the account-wide Claude switch (the one in the Meet panel), so both always agree.
+    const at = Date.now();
+    await chrome.storage.local.set({ [aaKey()]: { on, at }, [claudeKey()]: { on, at } });
     if (on) F.setPrefs({ liveAiIntroSeen: true });
     render();
   });
@@ -230,7 +235,7 @@ export function createLivePanel({ meetingId, api, lookup, onCite }) {
     toggle.disabled = !user || unavailable;
     toggle.checked = autoOn && !unavailable;
     if (routeMissing) { status.append(el('p', 'off', ERRORS.route_not_found)); return; }
-    if (enabled === false) { status.append(el('p', 'off', "MeetMemo AI isn't set up on the MeetMemo server, so Auto-answer is unavailable. Your transcript is unaffected.")); return; }
+    if (enabled === false) { status.append(el('p', 'off', "Claude isn't set up on the MeetMemo server, so Auto-answer is unavailable. Your transcript is unaffected.")); return; }
     if (autoOn) {
       const p = el('p', 'listening');
       p.append(el('span', 'pulse'), 'Listening for questions…');
@@ -239,10 +244,10 @@ export function createLivePanel({ meetingId, api, lookup, onCite }) {
     }
     const intro = el('div', 'intro');
     intro.append(
-      el('p', '', 'Turn on Auto-answer and MeetMemo AI answers useful questions as they are asked in this meeting, here beside the transcript. Only you see the answers.'),
+      el('p', '', 'Turn on Auto-answer and Claude answers useful questions as they are asked in this meeting, here beside the transcript. Only you see the answers.'),
     );
     const privacy = el('p', 'ai-privacy');
-    const link = el('a', '', 'How MeetMemo AI uses your data');
+    const link = el('a', '', 'How Claude uses your data');
     link.href = 'privacy.html#ai';
     link.target = '_blank';
     privacy.append("When a question is detected, it and a short excerpt of the last few transcript lines are sent to Anthropic's Claude to write the answer. ", link);
