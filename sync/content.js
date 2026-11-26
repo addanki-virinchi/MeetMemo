@@ -26,6 +26,7 @@
   const OPEN_FLUSH_TIMEOUT_MS = 5000;
 
   const speakers = new Map(); // deviceId -> display name
+  let selfName = null; // this user's own name in captions (from the 'self-device' event)
   const accepted = new Map(); // caption id -> { rev, text, ts } highest accepted revision
   const pending = new Map(); // caption id -> line awaiting durable receipt
   let port = null;
@@ -101,9 +102,9 @@
     if (prev && (rev < prev.rev || (rev === prev.rev && text === prev.text))) return; // stale or duplicate
     const ts = prev?.ts ?? Date.now(); // first-seen time keeps ordering stable across edits
     accepted.delete(key); // re-insert so the cap evicts the least recently changed
-    accepted.set(key, { rev, text, ts });
-    cap(accepted, MAX_TRACKED);
     const speaker = m.deviceName || speakers.get(m.deviceId);
+    accepted.set(key, { rev, text, ts, ...(speaker ? { speaker: String(speaker).slice(0, 200) } : {}) });
+    cap(accepted, MAX_TRACKED);
     const langId = m.langId ?? m.zoomLanguage;
     pending.delete(key);
     pending.set(key, {
@@ -214,8 +215,11 @@
         for (const m of msgs) queue(m, { history });
         break;
       }
-      case 'deviceinfo':
       case 'self-device':
+        if (d?.deviceName) selfName = String(d.deviceName).slice(0, 200);
+        rememberSpeaker(d);
+        break;
+      case 'deviceinfo':
         rememberSpeaker(d);
         break;
       case 'premeeting-devices':
@@ -246,6 +250,15 @@
       const code = meetingCode();
       return code && !stopped ? meetingInfo(code) : null;
     },
+    // The newest caption lines of this tab (oldest first), including ones not uploaded yet; used
+    // as live context by the Claude tab's assistant actions (sync/assist-dock.js).
+    recentLines(max = 600) {
+      return [...accepted.entries()]
+        .map(([sourceId, a]) => ({ sourceId, speaker: a.speaker, text: a.text, ts: a.ts }))
+        .sort((a, b) => a.ts - b.ts)
+        .slice(-max);
+    },
+    userName: () => selfName,
     async openTranscript({ ask = false } = {}) {
       const code = meetingCode();
       if (code) await flushAll(OPEN_FLUSH_TIMEOUT_MS);

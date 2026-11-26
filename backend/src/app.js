@@ -10,6 +10,7 @@ import authRouter from './routes/auth.js';
 import usersRouter from './routes/users.js';
 import meetingsRouter from './routes/meetings.js';
 import aiRouter from './routes/ai.js';
+import contextDocsRouter from './routes/contextDocs.js';
 
 export function createApp() {
   const app = express();
@@ -20,11 +21,13 @@ export function createApp() {
     origin: (origin, cb) => (!origin || config.allowedOrigins.includes(origin) ? cb(null, true) : cb(null, false)),
     allowedHeaders: ['Authorization', 'Content-Type'],
   }));
+  // Context documents carry whole files (base64 PDFs/images); everything else stays at 5 MB.
+  app.use('/v1/context-docs', express.json({ limit: '15mb' }));
   app.use(express.json({ limit: '5mb' }));
   app.use(rateLimit({ windowMs: config.rateLimit.windowMs, limit: config.rateLimit.max, standardHeaders: true, legacyHeaders: false }));
 
   // features lets the extension tell an outdated deployment from a missing meeting.
-  app.get('/healthz', (req, res) => res.json({ ok: true, features: ['ai-ask', 'ai-live'] }));
+  app.get('/healthz', (req, res) => res.json({ ok: true, features: ['ai-ask', 'ai-live', 'ai-assist', 'context-docs'] }));
   // Readiness: also proves Firestore is reachable with the configured credentials.
   app.get('/readyz', async (req, res) => {
     const r = await checkFirestore();
@@ -34,6 +37,7 @@ export function createApp() {
   app.use('/v1/users', requireAuth, usersRouter);
   app.use('/v1/meetings/:id/ai', requireAuth, aiRouter); // before the meetings router; disjoint paths
   app.use('/v1/meetings', requireAuth, meetingsRouter);
+  app.use('/v1/context-docs', requireAuth, contextDocsRouter);
 
   app.use(notFound);
   app.use(errorHandler);

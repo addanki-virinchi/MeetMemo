@@ -8,6 +8,7 @@ import { buildTranscriptContext, resolveTimeZone, MAX_CONTEXT_CHARS } from '../a
 import { createCitationRewriter, citationsToLines } from '../ai/citations.js';
 import { AI_MESSAGES, mapAiError } from '../ai/errors.js';
 import { createLiveRouter } from './aiLiveRouter.js';
+import { createAssistRouter } from './aiAssistRouter.js';
 
 // Ask Meet Memo: questions about one meeting, answered by Claude from that meeting's saved
 // transcript. Mounted at /v1/meetings/:id/ai behind requireAuth.
@@ -39,10 +40,13 @@ export function createAiRouter({
   db, FieldValue, FieldPath, anthropic, model = 'claude-haiku-5-5',
   questionsPerWindow = 20, windowMs = 10 * 60_000, now = () => Date.now(),
   liveModel = model, livePerWindow = 60, liveOptions = {},
+  assistModel = model, assistPerWindow = 40, assistOptions = {},
 }) {
   const router = Router({ mergeParams: true });
   // Live auto-answer (aiLiveRouter.js): /v1/meetings/:id/ai/live
   router.use('/live', createLiveRouter({ db, FieldValue, anthropic, model: liveModel, perWindow: livePerWindow, windowMs, now, ...liveOptions }));
+  // In-meeting assistant actions (aiAssistRouter.js): /v1/meetings/:id/ai/assist
+  router.use('/assist', createAssistRouter({ db, anthropic, model: assistModel, perWindow: assistPerWindow, windowMs, ...assistOptions }));
   const meetings = db.collection('meetings');
   const feature = FEATURES.qa;
 

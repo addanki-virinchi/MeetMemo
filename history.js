@@ -4,6 +4,7 @@
 // Follows the local session like the other pages: on sign-out or an account switch the list is
 // cleared and in-flight loads are discarded (each load carries the generation it started in).
 import { settings, createAuthProvider, createClient } from './extension-auth/index.js';
+import { readDocument, mimeFor } from './ui/docText.js';
 
 const F = self.MeetMemoFormat;
 const auth = createAuthProvider();
@@ -227,6 +228,156 @@ async function removeMeeting(item, button) {
   }
 }
 
+// ---- Meeting documents: context for the Claude tab's assistant actions in the Meet panel ----
+let docs = [];
+let uploading = false;
+
+function docStatus(msg, kind = '') {
+  const s = $('doc-status');
+  s.textContent = msg || '';
+  s.className = `notice${kind ? ` ${kind}` : ''}`;
+  s.hidden = !msg;
+}
+
+// Server errors with their own wording (Claude busy, timed out, unreadable file) are shown as is.
+function docError(e) {
+  if (e?.status >= 500 && e.code && e.code !== 'internal_error' && e.message) return e.message;
+  if (e?.status >= 500) return 'The server hit an error. Try again in a moment.';
+  return friendly(e);
+}
+
+const fmtChars = (n) => `${n.toLocaleString()} character${n === 1 ? '' : 's'}`;
+const docBadge = (name) => ((String(name).match(/\.([a-z0-9]{1,4})$/i) || [])[1] || 'doc').toUpperCase();
+
+function renderDocs() {
+  const list = $('doc-list');
+  list.replaceChildren(...docs.map((d) => {
+    const li = el('li', `doc-item${d.active ? '' : ' off'}`);
+    const icon = el('span', 'doc-icon', docBadge(d.name));
+    icon.setAttribute('aria-hidden', 'true');
+    const main = el('div', 'doc-main');
+    const name = el('div', 'doc-name', d.name);
+    name.title = d.name;
+    const meta = el('div', 'doc-meta');
+    meta.append(el('span', '', fmtChars(d.chars)));
+    if (d.source === 'extracted') meta.append(el('span', '', 'Read by Claude'));
+    if (d.createdAt) meta.append(el('span', '', `Added ${F.longDate(new Date(d.createdAt))}`));
+    if (d.truncated) meta.append(el('span', 'warn', 'Long file: only the first part is used'));
+    main.append(name, meta);
+
+    const actions = el('div', 'doc-actions');
+    const toggle = el('label', 'doc-toggle');
+    const box = el('input');
+    box.type = 'checkbox';
+    box.setAttribute('role', 'switch');
+    box.checked = d.active;
+    box.setAttribute('aria-label', `Use ${d.name} in meetings`);
+    box.addEventListener('change', () => toggleDoc(d, box));
+    toggle.append(box, el('span', '', 'Use in meetings'));
+    const del = el('button', 'btn small ghost danger');
+    del.type = 'button';
+    del.title = 'Delete this document';
+    del.setAttribute('aria-label', `Delete ${d.name}`);
+    del.append(svg('<path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3"/>'));
+    del.addEventListener('click', () => deleteDoc(d, del));
+    actions.append(toggle, del);
+
+    li.append(icon, main, actions);
+    if (d.preview) li.append(el('p', 'doc-preview', d.preview));
+    return li;
+  }));
+  $('doc-empty').hidden = docs.length > 0;
+}
+
+async function loadDocs() {
+  const myGen = gen;
+  const user = currentUser;
+  if (!user) return;
+  try {
+    const r = await api.listContextDocs({ expectUid: user.uid });
+    if (myGen !== gen) return;
+    docs = r.items || [];
+    renderDocs();
+  } catch (e) {
+    if (myGen !== gen || e.code === 'account_changed') return;
+    if (e.code === 'route_not_found') docStatus('This MeetMemo server is out of date. Deploy the latest backend to upload meeting documents.', 'warn');
+    else docStatus(`Couldn't load your documents. ${docError(e)}`, 'error');
+  }
+}
+
+async function uploadFiles(files) {
+  if (uploading || !files.length) return;
+  const myGen = gen;
+  const user = currentUser;
+  if (!user) return;
+  uploading = true;
+  $('doc-upload').disabled = true;
+  const failed = [];
+  let added = 0;
+  for (const file of files) {
+    try {
+      docStatus(`Reading ${file.name}…`);
+      const doc = await readDocument(file);
+      if (doc.kind === 'data') docStatus(`Claude is reading ${file.name}. Long PDFs can take a minute or two…`);
+      else docStatus(`Uploading ${file.name}…`);
+      const saved = await api.uploadContextDoc({
+        name: file.name.slice(0, 200),
+        mimeType: mimeFor(file),
+        size: file.size,
+        ...(doc.kind === 'data' ? { data: doc.data } : { text: doc.text }),
+      }, { expectUid: user.uid });
+      if (myGen !== gen) return;
+      docs.push(saved);
+      added += 1;
+      renderDocs();
+    } catch (e) {
+      if (myGen !== gen) return;
+      failed.push(e instanceof TypeError || e?.name === 'TimeoutError' || e?.status ? `${file.name}: ${docError(e)}` : `${e.message}`);
+    }
+  }
+  uploading = false;
+  $('doc-upload').disabled = false;
+  if (myGen !== gen) return;
+  if (failed.length) docStatus(`${added ? `Added ${added}. ` : ''}Couldn't add ${failed.length === 1 ? 'a file' : `${failed.length} files`}: ${failed.join(' ')}`, 'error');
+  else docStatus(`Added ${added} document${added === 1 ? '' : 's'}. Claude will use ${added === 1 ? 'it' : 'them'} in your next meeting.`, 'ok');
+}
+
+async function toggleDoc(d, box) {
+  box.disabled = true;
+  try {
+    const updated = await api.updateContextDoc(d.id, { active: box.checked }, { expectUid: currentUser?.uid });
+    Object.assign(d, updated);
+    docStatus('');
+  } catch (e) {
+    box.checked = d.active;
+    docStatus(`Couldn't change the document. ${docError(e)}`, 'error');
+  } finally {
+    box.disabled = false;
+    renderDocs();
+  }
+}
+
+async function deleteDoc(d, button) {
+  if (!confirm(`Delete "${d.name}"? Claude will no longer use it in your meetings.`)) return;
+  button.disabled = true;
+  try {
+    await api.deleteContextDoc(d.id, { expectUid: currentUser?.uid });
+    docs = docs.filter((x) => x !== d);
+    renderDocs();
+    docStatus('');
+  } catch (e) {
+    button.disabled = false;
+    docStatus(`Couldn't delete the document. ${docError(e)}`, 'error');
+  }
+}
+
+$('doc-upload').addEventListener('click', () => $('doc-file').click());
+$('doc-file').addEventListener('change', (ev) => {
+  const files = [...ev.target.files];
+  ev.target.value = ''; // the same file can be chosen again
+  uploadFiles(files);
+});
+
 $('search').addEventListener('input', applySearch);
 $('more').addEventListener('click', () => load({ more: true }));
 $('sign-in').addEventListener('click', () => {
@@ -243,7 +394,10 @@ auth.onAuthStateChanged((user) => {
   $('search').value = '';
   setError(null);
   $('nav-who').textContent = user ? (user.email || user.displayName || '') : '';
+  docs = []; $('doc-list').replaceChildren(); $('doc-empty').hidden = true; docStatus('');
+  $('context-docs').hidden = !user;
   if (!user) { show('signed-out'); return; }
+  loadDocs();
   $('subtitle').textContent = `Meetings saved to ${user.email || 'your account'}, newest first. Only you can see them.`;
   show('loading');
   load();

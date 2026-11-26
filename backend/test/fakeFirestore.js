@@ -25,6 +25,7 @@ export function createFakeFirestore() {
       async get() { stats.reads += 1; return snapshot(this, store.get(path)); },
       async set(data, opts) { writeDoc(path, data, opts); },
       async update(data) { updateDoc(path, data); },
+      async delete() { store.delete(path); },
       collection: (name) => collectionRef(`${path}/${name}`),
     };
   }

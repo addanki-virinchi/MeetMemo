@@ -87,7 +87,8 @@
     "extension-auth/panelPrivacy.js",
     "sync/live-detect.js",
     "sync/content.js",
-    "sync/claude-dock.js"
+    "sync/claude-dock.js",
+    "sync/assist-dock.js"
    ],
    "run_at": "document_start"
   }

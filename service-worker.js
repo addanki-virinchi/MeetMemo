@@ -15,4 +15,5 @@ importScripts(
   'sync/segment-id.js',
   'sync/worker.js',
   'sync/live-worker.js', // live auto-answer; uses the sync engine's meeting mappings
+  'sync/assist-worker.js', // Claude tab actions: Ask this question / What to ask next / Steer to close
 );

@@ -16,7 +16,7 @@ async function httpFailure(res) {
 export function createApiClient({ baseUrl, authProvider, fetchImpl = (...a) => fetch(...a) }) {
   // expectUid: refuse to send another account's token if the session changed underneath
   // the caller (e.g. a view that loaded for account A while B just signed in).
-  async function request(path, { method = 'GET', body, expectUid } = {}, retried = false) {
+  async function request(path, { method = 'GET', body, expectUid, timeoutMs = REQUEST_TIMEOUT_MS } = {}, retried = false) {
     const auth = await authProvider.getAuth(retried);
     if (!auth?.idToken) throw Object.assign(new Error('Not signed in'), { code: 'unauthenticated' });
     if (expectUid && auth.user?.uid !== expectUid) throw Object.assign(new Error('Signed-in account changed'), { code: 'account_changed' });
@@ -24,11 +24,11 @@ export function createApiClient({ baseUrl, authProvider, fetchImpl = (...a) => f
       method,
       headers: { Authorization: `Bearer ${auth.idToken}`, ...(body ? { 'Content-Type': 'application/json' } : {}) },
       body: body ? JSON.stringify(body) : undefined,
-      signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
+      signal: AbortSignal.timeout(timeoutMs),
     });
     if (res.status === 401 && !retried) {
       // The backend rejected the token: refresh it once and retry before reporting a failure.
-      return request(path, { method, body, expectUid }, true);
+      return request(path, { method, body, expectUid, timeoutMs }, true);
     }
     if (!res.ok) throw await httpFailure(res);
     return res.status === 204 ? null : res.json();
@@ -125,5 +125,11 @@ export function createApiClient({ baseUrl, authProvider, fetchImpl = (...a) => f
     deleteAiThread: (meetingId, threadId, opts) => request(`/v1/meetings/${id(meetingId)}/ai/threads/${id(threadId)}`, { method: 'DELETE', ...opts }),
     // Live auto-answer: completed cards for one meeting (answers stream through the worker)
     listLiveCards: (meetingId, opts) => request(`/v1/meetings/${id(meetingId)}/ai/live`, opts),
+    // Meeting context documents (Meetings page); the Claude tab's assistant reads the active ones.
+    listContextDocs: (opts) => request('/v1/context-docs', opts),
+    // PDFs and images are read by Claude on the server, which can take a few minutes for long files.
+    uploadContextDoc: (body, opts) => request('/v1/context-docs', { method: 'POST', body, timeoutMs: 240_000, ...opts }),
+    updateContextDoc: (docId, body, opts) => request(`/v1/context-docs/${id(docId)}`, { method: 'PATCH', body, ...opts }),
+    deleteContextDoc: (docId, opts) => request(`/v1/context-docs/${id(docId)}`, { method: 'DELETE', ...opts }),
   };
 }
