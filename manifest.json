@@ -31,7 +31,7 @@
  ],
  "host_permissions": [
   "*://meet.google.com/*-*-*",
-  "https://meetmemo-api.onrender.com/*"
+  "http://localhost:8080/*"
  ],
  "optional_host_permissions": [
   "*://*/*",
@@ -85,6 +85,7 @@
     "extension-auth/localBridge.js",
     "extension-auth/links.js",
     "extension-auth/panelPrivacy.js",
+    "sync/live-detect.js",
     "sync/content.js"
    ],
    "run_at": "document_start"

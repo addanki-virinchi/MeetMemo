@@ -75,13 +75,16 @@ function buildCard(item) {
   const actions = el('div', 'actions');
   const open = el('a', 'btn small', 'Open transcript');
   open.href = transcriptUrl(m.id);
+  const askAi = el('a', 'btn small ghost', 'Ask AI');
+  askAi.href = `${transcriptUrl(m.id)}&ask=1`;
+  askAi.title = 'Ask questions about this meeting';
   const del = el('button', 'btn small ghost danger');
   del.type = 'button';
   del.title = 'Delete this meeting and its transcript';
   del.setAttribute('aria-label', `Delete meeting ${heading.title}`);
   del.append(svg('<path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3"/>'));
   del.addEventListener('click', () => removeMeeting(item, del));
-  actions.append(open, del);
+  actions.append(open, askAi, del);
 
   const preview = el('div', 'preview');
   preview.append(el('span', 'skeleton'), el('span', 'skeleton'));
@@ -208,6 +211,12 @@ async function removeMeeting(item, button) {
   button.disabled = true;
   try {
     await api.deleteMeeting(item.m.id);
+    // The backend deleted the meeting's AI cards with it; drop this device's copies and its
+    // Auto-answer setting too.
+    if (currentUser) {
+      chrome.storage.local.remove(`meetmemo_autoanswer:${currentUser.uid}:${item.m.id}`).catch(() => {});
+      chrome.storage.session?.remove(`meetmemo_live:${currentUser.uid}:${item.m.id}`).catch(() => {});
+    }
     if (myGen !== gen) return;
     meetings = meetings.filter((x) => x !== item);
     render();

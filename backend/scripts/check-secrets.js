@@ -4,7 +4,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const extRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..');
-const patterns = [/BEGIN (RSA |EC )?PRIVATE KEY/, /"private_key_id"/, /firebase-adminsdk-[a-z0-9]+@/];
+const patterns = [/BEGIN (RSA |EC )?PRIVATE KEY/, /"private_key_id"/, /firebase-adminsdk-[a-z0-9]+@/, /sk-ant-[A-Za-z0-9_-]{20,}/];
 const skip = new Set(['node_modules', 'backend', '.git']);
 let bad = 0;
 
@@ -21,4 +21,4 @@ let bad = 0;
 })(extRoot);
 
 if (bad) process.exit(1);
-console.log('No service-account material found in extension files.');
+console.log('No service-account material or API keys found in extension files.');

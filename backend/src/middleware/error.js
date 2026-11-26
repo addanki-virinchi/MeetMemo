@@ -6,8 +6,11 @@ export const asyncHandler = (fn) => (req, res, next) => Promise.resolve(fn(req, 
 
 export const httpError = (status, code, message) => Object.assign(new Error(message), { status, code, expose: true });
 
+// Unknown endpoint. Deliberately not 'not_found': that code means "this meeting does not exist
+// for your account", and an outdated server answering a newer route with it made the extension
+// report a missing meeting when the route itself was missing.
 export function notFound(req, res) {
-  res.status(404).json({ error: 'not_found' });
+  res.status(404).json({ error: 'route_not_found', message: 'This MeetMemo server does not have that endpoint. It may be running an older version.' });
 }
 
 // eslint-disable-next-line no-unused-vars

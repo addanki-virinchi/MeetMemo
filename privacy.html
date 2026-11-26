@@ -66,7 +66,23 @@
 
       <h2 id="translation">Translation and AI</h2>
       <p><strong>Read in</strong> translation runs on your own device with Chrome's built-in translator. Your text is not sent to MeetMemo or anyone else to be translated.</p>
-      <p>Ask MeetMemo AI is not available yet. Before it launches, this page will explain exactly what it sends and where.</p>
+      <h3 id="ai">Ask MeetMemo AI</h3>
+      <p>Nothing is sent for AI until you ask a question. When you do:</p>
+      <ul>
+        <li><strong>What is sent:</strong> your question, earlier questions and answers in the same conversation, and that one meeting's saved transcript (speaker names, times and text). Nothing from your other meetings.</li>
+        <li><strong>Where it goes:</strong> the MeetMemo server sends it to Anthropic's Claude API, which writes the answer. Your browser never contacts Anthropic, and the API key stays on the MeetMemo server.</li>
+        <li><strong>What is saved:</strong> your questions and the answers are stored with the meeting in your MeetMemo account, so the conversation is there next time. Only you can see them.</li>
+        <li><strong>Deleting:</strong> deleting a meeting also deletes all of its AI conversations.</li>
+      </ul>
+      <p>Server logs record which meeting was asked about, timing and token counts, never your question, the transcript or the answer.</p>
+      <h3 id="ai-live">MeetMemo AI auto-answer (live meetings)</h3>
+      <p>Auto-answer is off for every meeting until you turn it on in that meeting's live view. While it is on:</p>
+      <ul>
+        <li><strong>What is checked on your device:</strong> live captions are checked in your browser for things that look like questions. Greetings and audio checks ("Can you hear me?") are dropped there and never sent.</li>
+        <li><strong>What is sent:</strong> for each likely question, the question and a short excerpt of the last few transcript lines (up to 12, with speaker names and times) go to the MeetMemo server, which sends them to Anthropic's Claude API. Claude first decides whether the question is worth answering; small talk gets no answer.</li>
+        <li><strong>What is saved:</strong> answered questions, the answer and the lines it cites are stored with the meeting in your account. The transcript excerpt is not stored with the answer. Only you can see the answers.</li>
+        <li><strong>Turning it off:</strong> switching Auto-answer off, signing out or switching accounts stops new answers immediately. Deleting the meeting deletes its answers.</li>
+      </ul>
 
       <h2 id="tracking">Analytics and tracking</h2>
       <p>MeetMemo does not use analytics or advertising trackers. The meeting panel contains older analytics code from the product it was built on; this version blocks that code from sending anything.</p>

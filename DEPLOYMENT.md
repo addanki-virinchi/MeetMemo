@@ -25,7 +25,21 @@ Nothing is tied to Render. The API URL lives in two extension files only, kept i
 | `FIREBASE_WEB_API_KEY` | Firebase Console → Project settings → General → Web API Key | no (public) |
 | `GOOGLE_OAUTH_CLIENT_ID` | OAuth client id from step 3 | no (public) |
 | `AUTH_PASSWORD_ENABLED` | `true` (default) | no |
+| `ANTHROPIC_API_KEY` | Anthropic API key for Ask MeetMemo AI. Optional: without it the server starts and Ask AI says it is not set up | **yes** |
+| `AI_MODEL` | `claude-haiku-5-5` (default) | no |
+| `AI_RATE_LIMIT_PER_10MIN` | questions per user per 10 minutes, default `20` | no |
+| `AI_LIVE_MODEL` | model for live auto-answer, default `AI_MODEL` (`claude-haiku-5-5`) | no |
+| `AI_LIVE_RATE_LIMIT_PER_10MIN` | live questions checked per user per 10 minutes, default `60` | no |
 | `PORT` | set by Render | no |
+
+The Anthropic key is read only by the backend (`backend/src/ai/client.js`). The extension never
+calls Anthropic and never sees the key; `npm run check:secrets` fails if one appears in extension files.
+
+**Redeploy the backend together with the extension.** The AI routes (`/v1/meetings/:id/ai/*`)
+exist only in this backend version. An older deployment answers them with a 404, which older
+extension builds showed as "This meeting was deleted or belongs to another account". Check what is
+running with `curl https://<your-api>/healthz`: a current backend replies with
+`"features":["ai-ask","ai-live"]`; a bare `{"ok":true}` means the deployment predates AI.
 
 No OAuth client **secret** is used anywhere: the extension uses Google's implicit `id_token` flow
 and Firebase validates the token, so there is nothing to store. Never commit `.env*` files

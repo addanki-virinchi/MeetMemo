@@ -76,7 +76,22 @@
     }
   }
 
-  function queue(m) {
+  // ---- Live auto-answer (sync/live-detect.js): settled questions go to the worker, which
+  // checks the account, the meeting mapping and the meeting's Auto-answer setting. ----
+  const scriptStart = Date.now();
+  let detectCode = null;
+  const detector = self.MeetMemoLiveDetect?.createDetector({
+    isPaused,
+    onCandidate(candidate) {
+      const code = meetingCode();
+      if (stopped || !code || code !== detectCode) return;
+      const p = getPort();
+      if (!p) return;
+      try { p.postMessage({ type: 'candidate', meeting: meetingInfo(code), candidate }); } catch { /* worker restarting; the question is dropped */ }
+    },
+  }) || null;
+
+  function queue(m, { history = false } = {}) {
     if (!m || m.type === 'chat' || m.messageId == null) return; // in-meeting chat is not transcript
     const text = String(m.text ?? '').trim().slice(0, 10000);
     if (!text) return;
@@ -99,6 +114,8 @@
       ...(speaker ? { speaker: String(speaker).slice(0, 200) } : {}),
       ...(langId != null && langId !== '' ? { langId: String(langId).slice(0, 20) } : {}),
     });
+    // Only new live revisions reach the detector; uploads, retries and pagehide re-sends do not.
+    detector?.observe({ sourceId: key, speaker, text, ts, final: m.isFinal === true || m.final === true, history });
     while (pending.size > MAX_PENDING) {
       pending.delete(pending.keys().next().value);
       dropped += 1;
@@ -186,10 +203,17 @@
     const d = event.detail;
     if (!d || stopped) return;
     switch (d.type) {
-      case 'speech':
-        if (isPaused()) return; // the panel drops captions while paused; so do we
-        for (const m of d.messages || []) queue(m);
+      case 'speech': {
+        if (isPaused()) { detector?.reset(); return; } // the panel drops captions while paused; so do we
+        const code = meetingCode();
+        if (code !== detectCode) { detector?.reset(); detectCode = code; } // a different meeting
+        const msgs = d.messages || [];
+        // A burst of many lines at once (or right after load) is a caption replay on reconnect:
+        // saved as usual, used as context, but never treated as a newly asked question.
+        const history = msgs.length > 5 || (Date.now() - scriptStart < 3000 && msgs.length > 1);
+        for (const m of msgs) queue(m, { history });
         break;
+      }
       case 'deviceinfo':
       case 'self-device':
         rememberSpeaker(d);
@@ -216,14 +240,14 @@
   // to the durable queue first (bounded wait), then open this meeting's private transcript,
   // which follows the remaining upload and refreshes as lines are saved.
   self.MEETMEMO_SYNC = {
-    async openTranscript() {
+    async openTranscript({ ask = false } = {}) {
       const code = meetingCode();
       if (code) await flushAll(OPEN_FLUSH_TIMEOUT_MS);
       // Fire and forget: no reply is expected (and the bundled background.js keeps every
       // runtime message channel open, so awaiting a reply would never settle).
       try {
         chrome.runtime.sendMessage(code
-          ? { type: 'meetmemo-open', target: 'transcript', meeting: meetingInfo(code) }
+          ? { type: 'meetmemo-open', target: 'transcript', meeting: meetingInfo(code), ...(ask ? { ask: true } : {}) }
           : { type: 'meetmemo-open', target: 'signin' }).catch(() => {});
       } catch (err) {
         console.warn('[MeetMemo] extension was reloaded; refresh the Meet tab', err);

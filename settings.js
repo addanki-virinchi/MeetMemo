@@ -38,7 +38,7 @@ async function initPreferences() {
   });
   $('ai-language').addEventListener('change', async (e) => {
     await F.setPrefs({ aiLanguage: e.target.value });
-    flash('Saved. Ask MeetMemo AI will use this when it launches.');
+    flash(e.target.value ? `Saved. Ask AI will answer in ${F.languageName(e.target.value)}.` : 'Saved. Ask AI will answer in the language you ask in.');
   });
 
   const support = $('translator-support');

@@ -1,0 +1,559 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Design mockup · Ask MeetMemo AI · MeetMemo V2</title>
+  <link rel="icon" href="../../favicon-32.png">
+  <!-- The real app stylesheet, so the mockup inherits MeetMemo's exact tokens, type and light/dark themes. -->
+  <link rel="stylesheet" href="../../ui/pages.css">
+  <style>
+    /* ================= Proposed additions to ui/pages.css ================= */
+    .topnav.wide .inner, main.wide { max-width: 1280px; }
+
+    /* Two-column workspace: transcript stays primary, AI panel docks on the right. */
+    .workspace { display: grid; grid-template-columns: minmax(0, 1fr) 420px; gap: 32px; align-items: start; }
+    body.panel-closed .workspace { grid-template-columns: minmax(0, 760px); justify-content: center; }
+    body.panel-closed .ai-panel { display: none; }
+    .reader { min-width: 0; }
+
+    .btn.ask[aria-pressed="true"] { background: var(--accent-soft); border-color: transparent; color: var(--accent); }
+
+    .ai-panel {
+      position: sticky; top: 76px; height: calc(100vh - 96px); min-height: 480px;
+      display: flex; flex-direction: column; overflow: hidden;
+      background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); box-shadow: var(--shadow);
+    }
+    .ai-head { display: flex; align-items: center; gap: 11px; padding: 14px 12px 13px 16px; border-bottom: 1px solid var(--line); }
+    .ai-mark { width: 30px; height: 30px; flex: none; border-radius: 8px; background: var(--accent-soft); color: var(--accent); display: grid; place-items: center; }
+    .ai-mark svg { width: 17px; height: 17px; }
+    .ai-head .titles { flex: 1; min-width: 0; }
+    .ai-head h2 { font: 600 15px/1.25 var(--font-display); margin: 0; }
+    .ai-head p { margin: 1px 0 0; font-size: 12.5px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .icon-btn { width: 32px; height: 32px; flex: none; border: 0; border-radius: var(--radius-sm); background: transparent; color: var(--muted); display: grid; place-items: center; cursor: pointer; }
+    .icon-btn:hover { background: var(--surface-2); color: var(--ink); }
+    .icon-btn svg { width: 17px; height: 17px; }
+
+    .ai-thread { flex: 1; overflow-y: auto; padding: 20px 18px 12px; display: flex; flex-direction: column; gap: 20px; }
+
+    /* Empty state */
+    .ai-empty h3 { font: 600 16px/1.3 var(--font-display); margin: 4px 0 6px; color: var(--ink); }
+    .ai-empty p { margin: 0 0 16px; color: var(--muted); font-size: 13.5px; line-height: 1.55; }
+    .ai-empty .label { font-size: 12.5px; font-weight: 600; color: var(--muted); margin: 0 0 8px; }
+    .suggest { display: grid; gap: 6px; }
+    .suggest button {
+      text-align: left; padding: 9px 12px; border: 1px solid var(--line); border-radius: var(--radius-sm);
+      background: var(--surface); color: var(--ink-2); font: 13.5px/1.4 var(--font); cursor: pointer;
+    }
+    .suggest button:hover { border-color: var(--accent); color: var(--ink); }
+
+    /* Messages */
+    .msg.user {
+      align-self: flex-end; max-width: 86%; padding: 9px 13px; border-radius: 14px 14px 4px 14px;
+      background: var(--accent-soft); color: var(--ink); font-size: 14.5px; line-height: 1.5; white-space: pre-wrap; overflow-wrap: anywhere;
+    }
+    .msg.ai { font-size: 14.5px; line-height: 1.65; color: var(--ink-2); }
+    .msg.ai .who { display: flex; align-items: center; gap: 7px; font-size: 12.5px; font-weight: 650; color: var(--ink); margin-bottom: 6px; }
+    .msg.ai .who .ai-mark { width: 20px; height: 20px; border-radius: 6px; }
+    .msg.ai .who .ai-mark svg { width: 12px; height: 12px; }
+    .msg.ai .who .note { font-weight: 500; color: var(--muted); }
+    .answer p { margin: 0 0 10px; }
+    .answer ul { margin: 0 0 10px; padding-left: 18px; }
+    .answer li { margin: 0 0 6px; padding-left: 2px; }
+    .answer li::marker { color: var(--muted); }
+    .answer strong { color: var(--ink); font-weight: 620; }
+    .answer > :last-child { margin-bottom: 0; }
+    .cite {
+      display: inline-flex; align-items: center; height: 19px; padding: 0 6px; margin: 0 1px; vertical-align: 1px;
+      border: 1px solid var(--line-strong); border-radius: 5px; background: var(--surface-2); color: var(--accent);
+      font: 600 11.5px/1 var(--font); font-variant-numeric: tabular-nums; cursor: pointer;
+    }
+    .cite:hover { border-color: var(--accent); }
+    .caret { display: inline-block; width: 7px; height: 15px; margin-left: 2px; vertical-align: -2px; background: var(--accent); border-radius: 1px; animation: blink 1s steps(2, start) infinite; }
+    @keyframes blink { to { visibility: hidden; } }
+    .ai-actions { display: flex; align-items: center; gap: 2px; margin: 8px 0 0 -8px; }
+    .ai-actions .btn { color: var(--muted); }
+    .ai-actions .btn:hover { color: var(--ink); }
+    .ai-actions .meta { font-size: 12px; color: var(--muted); margin-left: 6px; }
+    .stopped { font-size: 12.5px; color: var(--muted); font-style: italic; }
+
+    /* Loading */
+    .thinking .status { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--muted); margin-bottom: 8px; }
+    .dots { display: inline-flex; gap: 3px; }
+    .dots i { width: 5px; height: 5px; border-radius: 50%; background: var(--accent); opacity: .35; animation: dot 1.2s infinite ease-in-out; }
+    .dots i:nth-child(2) { animation-delay: .15s; } .dots i:nth-child(3) { animation-delay: .3s; }
+    @keyframes dot { 40% { opacity: 1; } }
+    .thinking .skeleton { height: 10px; margin: 8px 0; }
+    @media (prefers-reduced-motion: reduce) { .dots i, .caret { animation: none; opacity: 1; } }
+
+    /* Error */
+    .ai-error { display: grid; gap: 10px; padding: 12px 14px; border-radius: var(--radius-sm); background: var(--danger-soft); color: var(--danger); font-size: 13.5px; line-height: 1.5; }
+    .ai-error strong { display: block; font-weight: 650; }
+    .ai-error .row { display: flex; gap: 8px; }
+
+    /* Composer */
+    .ai-composer { border-top: 1px solid var(--line); padding: 12px 14px; }
+    .composer-box { display: flex; align-items: flex-end; gap: 8px; padding: 5px 5px 5px 12px; border: 1px solid var(--line-strong); border-radius: 12px; background: var(--surface); }
+    .composer-box:focus-within { outline: 2px solid var(--accent); outline-offset: -1px; border-color: transparent; }
+    .composer-box textarea { flex: 1; min-width: 0; max-height: 140px; padding: 7px 0; border: 0; outline: 0; resize: none; background: transparent; color: var(--ink); font: 14.5px/1.45 var(--font); }
+    .composer-box textarea::placeholder { color: var(--muted); }
+    .send { width: 34px; height: 34px; flex: none; border: 0; border-radius: 9px; background: var(--accent); color: #fff; display: grid; place-items: center; cursor: pointer; }
+    .send:hover { background: var(--accent-hover); }
+    .send:disabled { background: var(--line); color: var(--muted); cursor: default; }
+    .send svg { width: 17px; height: 17px; }
+    .send.stop { background: var(--ink); color: var(--paper); }
+    .composer-foot { display: flex; justify-content: space-between; gap: 12px; margin-top: 7px; font-size: 11.5px; color: var(--muted); }
+    @media (prefers-color-scheme: dark) { .send { color: #141518; } }
+
+    /* Transcript line highlighted from a citation */
+    .segment { border-radius: 8px; transition: background-color .5s, box-shadow .5s; }
+    .segment.cited { background: var(--accent-soft); box-shadow: 0 0 0 6px var(--accent-soft); }
+
+    /* Narrow windows: transcript / Ask AI become tabs */
+    .view-tabs { display: none; }
+    @media (max-width: 1080px) {
+      .workspace, body.panel-closed .workspace { grid-template-columns: minmax(0, 1fr); }
+      .view-tabs { display: inline-flex; gap: 2px; padding: 3px; margin: 0 0 14px; border: 1px solid var(--line); border-radius: 10px; background: var(--surface); }
+      .view-tabs button { height: 30px; padding: 0 14px; border: 0; border-radius: 7px; background: transparent; color: var(--muted); font: 500 13.5px var(--font); cursor: pointer; }
+      .view-tabs button[aria-selected="true"] { background: var(--accent-soft); color: var(--accent); }
+      body:not(.panel-closed)[data-view="transcript"] .ai-panel { display: none; }
+      body:not(.panel-closed)[data-view="ai"] .reader > :not(.reader-head):not(.view-tabs) { display: none; }
+      .ai-panel { position: static; height: calc(100vh - 230px); }
+      .btn.ask { display: none; }
+    }
+
+    /* ================= Mockup-only chrome (not part of the product) ================= */
+    .review-bar { background: #1b1d22; color: #ecedf0; font-size: 13px; }
+    .review-bar .inner { max-width: 1280px; margin: 0 auto; padding: 10px 24px; display: flex; flex-wrap: wrap; align-items: center; gap: 8px 14px; }
+    .review-bar b { font-weight: 650; }
+    .review-bar .states { display: flex; flex-wrap: wrap; gap: 4px; }
+    .review-bar button { height: 28px; padding: 0 11px; border: 1px solid #3a3d44; border-radius: 7px; background: transparent; color: #c9ccd3; font: 500 12.5px var(--font); cursor: pointer; }
+    .review-bar button:hover { color: #fff; border-color: #6b707b; }
+    .review-bar button[aria-pressed="true"] { background: #ecedf0; border-color: #ecedf0; color: #1b1d22; }
+    .review-bar .hint { color: #979ba6; margin-left: auto; }
+
+    @media (min-width: 1081px) { .ai-panel { height: calc(100vh - 190px); } } /* room for the review bar above the nav */
+    .notes { border-top: 1px solid var(--line); margin-top: 48px; padding-top: 40px; }
+    .notes h2 { font: 650 22px/1.25 var(--font-display); letter-spacing: -0.02em; margin: 0 0 6px; }
+    .notes > p { color: var(--muted); margin: 0 0 22px; max-width: 70ch; }
+    .options { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; margin-bottom: 44px; }
+    .option { padding: 16px; }
+    .option.pick { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent); }
+    .option h3 { font: 600 15px/1.3 var(--font-display); margin: 12px 0 2px; display: flex; align-items: center; gap: 8px; }
+    .option .verdict { font-size: 12.5px; color: var(--muted); margin: 0 0 8px; }
+    .option ul { margin: 0; padding-left: 18px; font-size: 13.5px; color: var(--ink-2); line-height: 1.55; }
+    .option li { margin: 3px 0; }
+    .option li.minus::marker { content: "–  "; color: var(--danger); }
+    .option li.plus::marker { content: "+  "; color: var(--ok); }
+    .wire { height: 150px; border-radius: 8px; background: var(--paper); border: 1px solid var(--line); padding: 10px; display: grid; gap: 6px; }
+    .wire .b { border-radius: 4px; background: var(--line); }
+    .wire .ai { background: var(--accent-soft); border: 1px dashed var(--accent); }
+    .wire.a { grid-template-rows: 10px 46px 1fr; }
+    .wire.b2 { grid-template-columns: 1fr 38%; grid-template-rows: 10px 1fr; }
+    .wire.b2 .b:first-child { grid-column: 1 / -1; }
+    .wire.c { position: relative; grid-template-rows: 10px 1fr; }
+    .wire.c .drawer { position: absolute; right: 10px; top: 26px; bottom: 10px; width: 44%; box-shadow: -8px 0 16px rgba(0,0,0,.08); }
+    .wire.c .dim { opacity: .45; }
+    .flow { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; margin-bottom: 44px; }
+    .flow .card { padding: 14px 16px; }
+    .flow .n { display: inline-grid; place-items: center; width: 22px; height: 22px; border-radius: 50%; background: var(--accent-soft); color: var(--accent); font-size: 12px; font-weight: 700; margin-bottom: 6px; }
+    .flow h3 { margin: 0 0 3px; font-size: 14.5px; }
+    .flow p { margin: 0; font-size: 13.5px; color: var(--muted); line-height: 1.5; }
+    @media (max-width: 860px) { .options { grid-template-columns: 1fr; } }
+  </style>
+</head>
+<body class="app" data-view="transcript">
+
+  <div class="review-bar" role="region" aria-label="Mockup controls">
+    <div class="inner">
+      <b>Design mockup</b>
+      <span>Show state:</span>
+      <div class="states" id="states">
+        <button type="button" data-state="empty">Empty</button>
+        <button type="button" data-state="thinking">Loading</button>
+        <button type="button" data-state="streaming">Streaming</button>
+        <button type="button" data-state="answer">Answer</button>
+        <button type="button" data-state="conversation">Follow-ups</button>
+        <button type="button" data-state="noanswer">Not in transcript</button>
+        <button type="button" data-state="error">Error</button>
+        <button type="button" data-state="closed">Panel closed</button>
+      </div>
+      <span class="hint">Answers are simulated. Try typing a question or clicking a time chip.</span>
+    </div>
+  </div>
+
+  <header class="topnav wide">
+    <div class="inner">
+      <a class="brand" href="#"><img src="../../logo-48.png" alt="">MeetMemo</a>
+      <nav aria-label="Main">
+        <a href="#" aria-current="page">Meetings</a>
+        <a href="#">Settings</a>
+        <a href="#">Help</a>
+        <a href="#">Privacy</a>
+      </nav>
+    </div>
+  </header>
+
+  <main class="container wide">
+    <div class="workspace">
+
+      <!-- ============ Transcript (unchanged reader, plus an "Ask AI" toolbar button) ============ -->
+      <section class="reader" aria-label="Transcript">
+        <a class="back" href="#">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="m15 18-6-6 6-6"/></svg>
+          All meetings
+        </a>
+        <div class="reader-head">
+          <p class="eyebrow">Google Meet · xkd-pqra-mte</p>
+          <h1>Q4 mobile launch planning</h1>
+          <div class="reader-meta">
+            <span>Tuesday, November 24, 2026, 10:02</span><span>28 min</span><span>4 speakers</span><span>19 lines</span>
+            <span class="private">Private: visible only to your account</span>
+          </div>
+        </div>
+
+        <div class="view-tabs" role="tablist" aria-label="View">
+          <button type="button" role="tab" data-view="transcript" aria-selected="true">Transcript</button>
+          <button type="button" role="tab" data-view="ai" aria-selected="false">Ask AI</button>
+        </div>
+
+        <div class="toolbar">
+          <button type="button" class="btn small">Copy text</button>
+          <button type="button" class="btn small">Download .txt</button>
+          <button type="button" class="btn small">Print or save as PDF</button>
+          <span class="spacer"></span>
+          <button type="button" class="btn small ask" id="toggle-panel" aria-pressed="true" aria-controls="ai-panel">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12a8 8 0 0 1-11.6 7.1L4 20l.9-5.4A8 8 0 1 1 21 12Z"/><path d="M9 11h6M9 14h3.5"/></svg>
+            Ask AI
+          </button>
+        </div>
+        <div id="segments"></div>
+      </section>
+
+      <!-- ============ Ask MeetMemo AI panel ============ -->
+      <aside class="ai-panel" id="ai-panel" aria-label="Ask MeetMemo AI">
+        <div class="ai-head">
+          <span class="ai-mark" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a8 8 0 0 1-11.6 7.1L4 20l.9-5.4A8 8 0 1 1 21 12Z"/><path d="M9 11h6M9 14h3.5"/></svg>
+          </span>
+          <div class="titles">
+            <h2>Ask MeetMemo AI</h2>
+            <p>Answers from this meeting's transcript only</p>
+          </div>
+          <button type="button" class="icon-btn" id="new-chat" title="New conversation" aria-label="New conversation">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
+          </button>
+          <button type="button" class="icon-btn" id="close-panel" title="Close panel" aria-label="Close panel">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"/></svg>
+          </button>
+        </div>
+
+        <div class="ai-thread" id="thread" aria-live="polite"></div>
+
+        <form class="ai-composer" id="composer">
+          <div class="composer-box">
+            <textarea id="q" aria-label="Your question" rows="1" maxlength="2000" placeholder="Ask about this meeting…"></textarea>
+            <button type="submit" class="send" id="send" aria-label="Send" disabled>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 19V5M5 12l7-7 7 7"/></svg>
+            </button>
+          </div>
+          <div class="composer-foot">
+            <span>Answers can be wrong. Check the linked lines.</span>
+            <span>Enter to send · Shift+Enter for a new line</span>
+          </div>
+        </form>
+      </aside>
+    </div>
+
+    <!-- ============ Design notes (review only) ============ -->
+    <section class="notes" aria-label="Design notes">
+      <h2>Layouts considered</h2>
+      <p>All three keep the transcript reachable. The side panel is the only one where the transcript and the conversation are both visible at the same time, which matters because every answer links back to transcript lines.</p>
+      <div class="options">
+        <div class="card option">
+          <div class="wire a"><div class="b"></div><div class="b ai"></div><div class="b"></div></div>
+          <h3>A · Panel above transcript</h3>
+          <p class="verdict">Your initial idea</p>
+          <ul>
+            <li class="plus">Very simple to build, works at any width</li>
+            <li class="minus">Each answer pushes the transcript down the page</li>
+            <li class="minus">Follow-ups make the panel grow or scroll inside a box</li>
+            <li class="minus">A time chip scrolls the answer out of view</li>
+          </ul>
+        </div>
+        <div class="card option pick">
+          <div class="wire b2"><div class="b"></div><div class="b"></div><div class="b ai"></div></div>
+          <h3>B · Docked side panel <span class="badge">Recommended</span></h3>
+          <p class="verdict">Shown live above</p>
+          <ul>
+            <li class="plus">Transcript and answers side by side; time chips jump without losing the answer</li>
+            <li class="plus">Chat layout handles follow-ups naturally</li>
+            <li class="plus">Room for later AI features (summary, action items) as panel tabs</li>
+            <li class="minus">Needs a tab layout below ~1080px (included)</li>
+          </ul>
+        </div>
+        <div class="card option">
+          <div class="wire c"><div class="b dim"></div><div class="b dim"></div><div class="b ai drawer"></div></div>
+          <h3>C · Slide-over drawer</h3>
+          <p class="verdict">Common pattern</p>
+          <ul>
+            <li class="plus">Leaves the reader layout untouched when closed</li>
+            <li class="minus">Covers the transcript lines the answer cites</li>
+            <li class="minus">Feels like a separate tool, not part of the meeting</li>
+          </ul>
+        </div>
+      </div>
+
+      <h2>How a question flows</h2>
+      <p>The same steps in the order you described them, as the user sees them.</p>
+      <div class="flow">
+        <div class="card"><span class="n">1</span><h3>Open a meeting</h3><p>The panel opens beside the transcript with suggested questions that use the meeting's own speaker names.</p></div>
+        <div class="card"><span class="n">2</span><h3>Ask</h3><p>Type or pick a suggestion. The question appears at once and the send button becomes Stop.</p></div>
+        <div class="card"><span class="n">3</span><h3>Loading</h3><p>"Reading the transcript…" with placeholder lines, then the answer streams in word by word.</p></div>
+        <div class="card"><span class="n">4</span><h3>Answer</h3><p>Formatted text with time chips. A chip scrolls to and highlights that line in the transcript.</p></div>
+        <div class="card"><span class="n">5</span><h3>Follow up</h3><p>Ask again in the same box. Earlier turns go along as context, so "who owns that?" works.</p></div>
+        <div class="card"><span class="n">6</span><h3>Come back later</h3><p>The conversation is saved with the meeting and reappears next time. Deleting the meeting deletes it.</p></div>
+      </div>
+    </section>
+  </main>
+
+  <script>
+  // ---------- Sample meeting (fictional) ----------
+  const SEGMENTS = [
+    [1, '10:02', 'Priya Raman', "Thanks everyone. Goal today is to lock the Q4 launch plan for the mobile app: date, scope, and who owns what."],
+    [2, '10:02', 'Priya Raman', "I'd like to leave with a decision on the date at minimum."],
+    [3, '10:04', 'Marcus Lee', "From engineering, the offline sync work is about two weeks behind. If we keep November 14 we'd have to ship without it."],
+    [4, '10:05', 'Elena Duarte', "Offline sync is the feature sales keeps asking about. Launching without it weakens the story a lot."],
+    [5, '10:06', 'Tom Becker', "Marketing has the campaign booked for the week of the 14th, but the paid slots can move once at no cost if we tell them by Friday."],
+    [6, '10:08', 'Priya Raman', "So the real choice is November 14 without offline sync, or about two weeks later with it."],
+    [7, '10:09', 'Marcus Lee', "If we move to December 2 I'm confident. That includes a week of beta with the pilot customers."],
+    [8, '10:11', 'Elena Duarte', "December 2 works for sales. I'd rather have the full story than a partial one."],
+    [9, '10:12', 'Priya Raman', "Okay, let's go with December 2. Tom, can you move the campaign slots before Friday?"],
+    [10, '10:12', 'Tom Becker', "Yes, I'll confirm with the agency tomorrow and send the new dates to this group."],
+    [11, '10:15', 'Marcus Lee', "One risk: the budget for the extra beta week. We'd need roughly 8,000 dollars more for device testing."],
+    [12, '10:16', 'Priya Raman', "I can approve up to 10,000 from the launch reserve. Send me the breakdown."],
+    [13, '10:16', 'Marcus Lee', "Will do, I'll have it to you by Wednesday."],
+    [14, '10:19', 'Elena Duarte', "For the pilot customers, I'll pick five accounts and get them signed up for the beta by next Monday."],
+    [15, '10:22', 'Tom Becker', "Should we still announce the date publicly this month?"],
+    [16, '10:23', 'Priya Raman', "Let's hold the public date until the beta starts. If the beta slips, we don't want to move a public date twice."],
+    [17, '10:26', 'Marcus Lee', "Agreed. I'll also write up the offline sync test plan and share it in the channel."],
+    [18, '10:29', 'Priya Raman', "Great. To recap: December 2 launch, campaign moves, extra beta budget approved up to 10k, public announcement waits for the beta."],
+    [19, '10:30', 'Priya Raman', "Let's check in next Thursday at the same time."],
+  ].map(([id, t, who, text]) => ({ id, t, who, text }));
+  const byId = new Map(SEGMENTS.map((s) => [s.id, s]));
+
+  // Canned answers. In the real feature Claude cites line ids ([L9]) and the page turns them into time chips.
+  const Q = {
+    decisions: 'What decisions were made in this meeting?',
+    owners: 'Who owns what, and by when?',
+    pricing: 'What did they decide about pricing?',
+    summary: 'Summarize this meeting in a few sentences',
+  };
+  const A = {
+    decisions: "Three decisions were made:\n\n- **Launch moves to December 2**, so offline sync, about two weeks behind, ships with it [[3]] [[9]].\n- **Extra beta budget approved.** Priya approved up to $10,000 from the launch reserve for device testing [[12]].\n- **The public date waits** until the beta starts, so a slip never moves a public date twice [[16]].\n\nThe team checks in again next Thursday at the same time [[19]].",
+    owners: "- **Tom:** move the campaign slots before Friday and send the new dates to the group; he confirms with the agency tomorrow [[10]].\n- **Marcus:** send Priya the budget breakdown by Wednesday [[13]], and write up the offline sync test plan [[17]].\n- **Elena:** sign up five pilot accounts for the beta by next Monday [[14]].\n- **Priya:** approve the beta budget once the breakdown arrives [[12]].",
+    pricing: "Pricing isn't discussed in this meeting. The only money that comes up is the extra beta budget of up to $10,000 for device testing [[12]].\n\nIf pricing came up in another meeting, open that meeting and ask there.",
+    summary: "The team moved the mobile app launch from November 14 to **December 2**, so offline sync can ship with it [[3]] [[9]]. A one-week beta with five pilot customers comes first [[7]] [[14]]. Priya approved up to $10,000 for extra device testing [[12]], and the public date stays private until the beta starts [[16]].",
+  };
+  const pick = (q) => /decid|decision/i.test(q) && !/pric/i.test(q) ? 'decisions'
+    : /pric|cost of the app|subscription/i.test(q) ? 'pricing'
+    : /own|who|action|task|follow.?up|next step/i.test(q) ? 'owners' : 'summary';
+
+  const $ = (id) => document.getElementById(id);
+  const el = (tag, cls, text) => { const e = document.createElement(tag); if (cls) e.className = cls; if (text !== undefined) e.textContent = text; return e; };
+  const icon = (d) => { const s = document.createElementNS('http://www.w3.org/2000/svg', 'svg'); s.setAttribute('viewBox', '0 0 24 24'); s.setAttribute('fill', 'none'); s.setAttribute('stroke', 'currentColor'); s.setAttribute('stroke-width', '2'); s.setAttribute('stroke-linecap', 'round'); s.setAttribute('stroke-linejoin', 'round'); s.innerHTML = d; return s; };
+  const CHAT = '<path d="M21 12a8 8 0 0 1-11.6 7.1L4 20l.9-5.4A8 8 0 1 1 21 12Z"/><path d="M9 11h6M9 14h3.5"/>';
+
+  // ---------- Transcript (same markup as transcript.js) ----------
+  function initials(n) { return n.split(/\s+/).map((p) => p[0]).join('').slice(0, 2).toUpperCase(); }
+  function renderTranscript() {
+    const slots = new Map(); let prev = null; const frag = document.createDocumentFragment();
+    for (const s of SEGMENTS) {
+      if (!slots.has(s.who)) slots.set(s.who, slots.size % 6);
+      const cont = prev && prev.who === s.who;
+      const row = el('div', `segment sp${slots.get(s.who)}${cont ? ' cont' : ''}`);
+      row.id = `seg-${s.id}`;
+      const body = el('div', 'body'); const sp = el('div', 'speaker');
+      sp.append(el('span', 'avatar', initials(s.who)), el('span', 'name', s.who));
+      body.append(sp, el('div', 'text', s.text));
+      row.append(el('div', 'time', s.t), body);
+      frag.append(row); prev = s;
+    }
+    $('segments').replaceChildren(frag);
+  }
+
+  // ---------- Safe mini formatter: paragraphs, "- " bullets, **bold**, [[id]] citations. Builds DOM, never innerHTML. ----------
+  function inline(parent, text) {
+    const re = /\*\*(.+?)\*\*|\[\[(\d+)\]\]/g; let i = 0, m;
+    while ((m = re.exec(text))) {
+      if (m.index > i) parent.append(text.slice(i, m.index));
+      if (m[1] !== undefined) parent.append(el('strong', '', m[1]));
+      else { const s = byId.get(Number(m[2])); if (s) { const b = el('button', 'cite', s.t); b.type = 'button'; b.dataset.seg = s.id; b.title = `${s.who}: ${s.text}`; parent.append(b); } }
+      i = re.lastIndex;
+    }
+    if (i < text.length) parent.append(text.slice(i));
+  }
+  function formatAnswer(src, streaming) {
+    let text = src;
+    if (streaming) { text = text.replace(/\[\[\d*\]?$/, ''); if ((text.match(/\*\*/g) || []).length % 2) text += '**'; }
+    const root = el('div', 'answer');
+    for (const block of text.split(/\n\n+/)) {
+      const lines = block.split('\n');
+      if (lines.every((l) => l.startsWith('- '))) { const ul = el('ul'); for (const l of lines) { const li = el('li'); inline(li, l.slice(2)); ul.append(li); } root.append(ul); }
+      else { const p = el('p'); inline(p, block); root.append(p); }
+    }
+    if (streaming) { const last = root.lastElementChild; const tgt = last?.tagName === 'UL' ? last.lastElementChild : last; (tgt || root).append(el('span', 'caret')); }
+    return root;
+  }
+
+  // ---------- Panel state ----------
+  let state = { messages: [], pending: false, error: null };
+  let streamTimer = null;
+
+  function who(note) {
+    const w = el('div', 'who'); const m = el('span', 'ai-mark'); m.append(icon(CHAT)); w.append(m, 'MeetMemo AI');
+    if (note) w.append(el('span', 'note', `· ${note}`));
+    return w;
+  }
+
+  function renderThread() {
+    const t = $('thread'); t.replaceChildren();
+    if (!state.messages.length && !state.pending && !state.error) {
+      const e = el('div', 'ai-empty');
+      e.append(el('h3', '', 'Ask anything about this meeting'),
+        el('p', '', 'MeetMemo AI reads the transcript and answers with links to the lines it used. It only knows what was said in this meeting.'),
+        el('p', 'label', 'Try asking'));
+      const list = el('div', 'suggest');
+      for (const q of [Q.decisions, Q.owners, 'What were Marcus\'s concerns?', Q.summary]) { const b = el('button', '', q); b.type = 'button'; b.onclick = () => ask(q); list.append(b); }
+      e.append(list); t.append(e);
+    }
+    for (const m of state.messages) {
+      if (m.role === 'user') { t.append(el('div', 'msg user', m.text)); continue; }
+      const box = el('div', 'msg ai'); box.append(who(), formatAnswer(m.text, m.streaming));
+      if (m.stopped) box.append(el('p', 'stopped', 'Stopped. Ask again to get the full answer.'));
+      if (!m.streaming) {
+        const acts = el('div', 'ai-actions');
+        const copy = el('button', 'btn ghost small', 'Copy'); copy.type = 'button';
+        copy.onclick = () => { navigator.clipboard?.writeText(m.text.replace(/\[\[(\d+)\]\]/g, (_, id) => `[${byId.get(+id)?.t}]`)); copy.textContent = 'Copied'; setTimeout(() => (copy.textContent = 'Copy'), 1500); };
+        const again = el('button', 'btn ghost small', 'Try again'); again.type = 'button'; again.onclick = () => regenerate(m);
+        const n = new Set([...m.text.matchAll(/\[\[(\d+)\]\]/g)].map((x) => x[1])).size;
+        acts.append(copy, again); if (n) acts.append(el('span', 'meta', `${n} line${n === 1 ? '' : 's'} cited`));
+        box.append(acts);
+      }
+      t.append(box);
+    }
+    if (state.pending) {
+      const box = el('div', 'msg ai thinking'); box.append(who());
+      const st = el('div', 'status'); const d = el('span', 'dots'); d.append(el('i'), el('i'), el('i'));
+      st.append(d, 'Reading the transcript…');
+      box.append(st);
+      for (const w of ['92%', '78%', '85%']) { const s = el('span', 'skeleton'); s.style.width = w; box.append(s); }
+      t.append(box);
+    }
+    if (state.error) {
+      const e = el('div', 'ai-error');
+      const msg = el('div'); msg.append(el('strong', '', state.error.title), state.error.detail);
+      const row = el('div', 'row');
+      const retry = el('button', 'btn small', 'Try again'); retry.type = 'button'; retry.onclick = () => { const q = state.error.question; state.error = null; answer(q); };
+      row.append(retry); e.append(msg, row); t.append(e);
+    }
+    t.scrollTop = t.scrollHeight;
+    syncComposer();
+  }
+
+  function busy() { return state.pending || state.messages.some((m) => m.streaming); }
+  function syncComposer() {
+    const b = $('send'); const isBusy = busy();
+    b.classList.toggle('stop', isBusy);
+    b.setAttribute('aria-label', isBusy ? 'Stop' : 'Send');
+    b.replaceChildren(isBusy ? icon('<rect x="7" y="7" width="10" height="10" rx="1.5" fill="currentColor"/>') : icon('<path d="M12 19V5M5 12l7-7 7 7"/>'));
+    b.disabled = !isBusy && !$('q').value.trim();
+  }
+
+  function stopAll() {
+    clearTimeout(streamTimer); clearInterval(streamTimer);
+    const s = state.messages.find((m) => m.streaming); if (s) { s.streaming = false; s.stopped = true; }
+    state.pending = false;
+  }
+
+  function ask(q) {
+    if (busy() || !q.trim()) return;
+    state.error = null;
+    state.messages.push({ role: 'user', text: q.trim() });
+    $('q').value = ''; autosize();
+    answer(q);
+  }
+
+  function answer(q) {
+    state.pending = true; renderThread();
+    streamTimer = setTimeout(() => {
+      state.pending = false;
+      const full = A[pick(q)];
+      const msg = { role: 'ai', text: '', streaming: true }; state.messages.push(msg);
+      const words = full.split(/(\s+)/); let i = 0;
+      streamTimer = setInterval(() => {
+        i += 2; msg.text = words.slice(0, i).join('');
+        if (i >= words.length) { clearInterval(streamTimer); msg.text = full; msg.streaming = false; }
+        renderThread();
+      }, 45);
+    }, 1300);
+  }
+
+  function regenerate(m) {
+    if (busy()) return;
+    const idx = state.messages.indexOf(m); const q = state.messages[idx - 1]?.text || '';
+    state.messages.splice(idx, 1); answer(q);
+  }
+
+  // ---------- Citations: jump to and highlight the line ----------
+  document.addEventListener('click', (e) => {
+    const c = e.target.closest('.cite'); if (!c) return;
+    if (matchMedia('(max-width: 1080px)').matches) setView('transcript');
+    const row = $(`seg-${c.dataset.seg}`); if (!row) return;
+    row.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    row.classList.add('cited'); setTimeout(() => row.classList.remove('cited'), 2400);
+  });
+
+  // ---------- Composer ----------
+  function autosize() { const t = $('q'); t.style.height = 'auto'; t.style.height = `${Math.min(t.scrollHeight, 140)}px`; }
+  $('q').addEventListener('input', () => { autosize(); syncComposer(); });
+  $('q').addEventListener('keydown', (e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); ask($('q').value); } });
+  $('composer').addEventListener('submit', (e) => { e.preventDefault(); if (busy()) { stopAll(); renderThread(); } else ask($('q').value); });
+  $('new-chat').onclick = () => { stopAll(); state = { messages: [], pending: false, error: null }; renderThread(); $('q').focus(); };
+
+  // ---------- Panel open/close and narrow-window tabs ----------
+  function setPanel(open) { document.body.classList.toggle('panel-closed', !open); $('toggle-panel').setAttribute('aria-pressed', String(open)); }
+  $('toggle-panel').onclick = () => setPanel(document.body.classList.contains('panel-closed'));
+  $('close-panel').onclick = () => { if (matchMedia('(max-width: 1080px)').matches) setView('transcript'); else setPanel(false); };
+  function setView(v) { document.body.dataset.view = v; document.querySelectorAll('.view-tabs button').forEach((b) => b.setAttribute('aria-selected', String(b.dataset.view === v))); }
+  document.querySelectorAll('.view-tabs button').forEach((b) => (b.onclick = () => { setPanel(true); setView(b.dataset.view); }));
+
+  // ---------- Mockup state switcher ----------
+  const done = (k) => ({ role: 'ai', text: A[k] });
+  const STATES = {
+    empty: () => ({ messages: [] }),
+    thinking: () => ({ messages: [{ role: 'user', text: Q.decisions }], pending: true }),
+    streaming: () => null,
+    answer: () => ({ messages: [{ role: 'user', text: Q.decisions }, done('decisions')] }),
+    conversation: () => ({ messages: [{ role: 'user', text: Q.decisions }, done('decisions'), { role: 'user', text: Q.owners }, done('owners')] }),
+    noanswer: () => ({ messages: [{ role: 'user', text: Q.pricing }, done('pricing')] }),
+    error: () => ({ messages: [{ role: 'user', text: Q.decisions }], error: { question: Q.decisions, title: "Couldn't get an answer", detail: 'MeetMemo AI is not reachable right now. Your question is kept; try again in a moment.' } }),
+    closed: () => ({ messages: [{ role: 'user', text: Q.decisions }, done('decisions')] }),
+  };
+  function show(name) {
+    stopAll();
+    document.querySelectorAll('#states button').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.state === name)));
+    setPanel(name !== 'closed');
+    if (name !== 'closed') setView('ai');
+    if (name === 'streaming') { state = { messages: [], pending: false, error: null }; ask(Q.decisions); return; }
+    state = { messages: [], pending: false, error: null, ...STATES[name]() };
+    renderThread();
+  }
+  document.querySelectorAll('#states button').forEach((b) => (b.onclick = () => show(b.dataset.state)));
+
+  renderTranscript();
+  show('answer');
+  setView('transcript');
+  </script>
+</body>
+</html>

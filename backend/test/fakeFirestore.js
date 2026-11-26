@@ -124,6 +124,7 @@ export function createFakeFirestore() {
       const b = {
         set(ref, data, opts) { writes.push(() => writeDoc(ref.path, data, opts)); return b; },
         update(ref, data) { writes.push(() => updateDoc(ref.path, data)); return b; },
+        delete(ref) { writes.push(() => store.delete(ref.path)); return b; },
         async commit() { writes.forEach((w) => w()); },
       };
       return b;

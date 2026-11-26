@@ -53,6 +53,17 @@ export const config = {
   // backend exchanges it for a Firebase session. Public identifier, not a secret.
   googleClientId: isPlaceholder(process.env.GOOGLE_OAUTH_CLIENT_ID) ? null : process.env.GOOGLE_OAUTH_CLIENT_ID.trim(),
   webApiKey: isPlaceholder(process.env.FIREBASE_WEB_API_KEY) ? null : process.env.FIREBASE_WEB_API_KEY.trim(),
+  // Ask MeetMemo AI. SECRET: the key is read here only and used only by src/ai/client.js.
+  // Optional: without a key the server still starts and the AI routes answer 503.
+  ai: {
+    apiKey: isPlaceholder(process.env.ANTHROPIC_API_KEY) ? null : process.env.ANTHROPIC_API_KEY.trim(),
+    enabled: process.env.AI_ENABLED !== 'false',
+    model: process.env.AI_MODEL?.trim() || 'claude-haiku-5-5',
+    questionsPerWindow: Number(process.env.AI_RATE_LIMIT_PER_10MIN || 20),
+    // Live auto-answer. Defaults to AI_MODEL (Claude Haiku) so one variable switches both.
+    liveModel: process.env.AI_LIVE_MODEL?.trim() || process.env.AI_MODEL?.trim() || 'claude-haiku-5-5',
+    livePerWindow: Number(process.env.AI_LIVE_RATE_LIMIT_PER_10MIN || 60),
+  },
 };
 
 export function validateConfig() {

@@ -73,9 +73,9 @@
   ].map(([code, name]) => ({ code, name }));
   const languageName = (code) => LANGUAGES.find((l) => l.code === code)?.name || code;
 
-  // User preferences shared by the settings page, the transcript reader and (later) Ask AI.
+  // User preferences shared by the settings page, the transcript reader and Ask AI.
   const PREFS_KEY = 'meetmemo_prefs';
-  const DEFAULT_PREFS = { readingLanguage: '', aiLanguage: '' };
+  const DEFAULT_PREFS = { readingLanguage: '', aiLanguage: '', aiPanelOpen: true };
   async function getPrefs() {
     try {
       const v = (await chrome.storage.local.get(PREFS_KEY))[PREFS_KEY];

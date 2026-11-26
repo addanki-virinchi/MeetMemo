@@ -10,7 +10,14 @@
 // - "Read in" translates the saved text for reading only, on this device, with Chrome's
 //   built-in Translator (when the browser has it). The saved transcript is never changed and
 //   no text is sent to the MeetMemo server or any other service for translation.
+//
+// - Beside the transcript: in the live view (?live=1) the MeetMemo AI panel (ai/livePanel.js)
+//   with automatic answers to questions asked in the meeting; for a saved meeting, Ask MeetMemo AI
+//   (ai/askPanel.js). This file only tells the panel who is signed in and when a transcript is
+//   shown, and scrolls to a line when an answer cites it.
 import { createAuthProvider, createClient } from './extension-auth/index.js';
+import { createAskPanel } from './ai/askPanel.js';
+import { createLivePanel } from './ai/livePanel.js';
 
 const { STATUS_KEY, statusFor } = self.MeetMemoSession;
 const F = self.MeetMemoFormat;
@@ -20,6 +27,24 @@ const $ = (id) => document.getElementById(id);
 const params = new URLSearchParams(location.search);
 const meetingId = params.get('id');
 const live = params.get('live') === '1';
+let askFocus = params.get('ask') === '1'; // opened from an "Ask AI" button: open the panel once
+
+// Rendered lines by segment id, for the citation chips in AI answers.
+const segIndex = new Map(); // id -> { row, time, speaker, text }
+
+function highlightSegment(segmentId) {
+  const row = segIndex.get(segmentId)?.row;
+  if (!row) return;
+  row.scrollIntoView({ behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth', block: 'center' });
+  row.classList.remove('cited');
+  void row.offsetWidth; // restart the highlight if the same line is cited twice in a row
+  row.classList.add('cited');
+  setTimeout(() => row.classList.remove('cited'), 2400);
+}
+
+const lookup = (id) => segIndex.get(id) || null;
+const askPanel = meetingId && !live ? createAskPanel({ api, meetingId, live, lookup, onCite: highlightSegment }) : null;
+const livePanel = meetingId && live ? createLivePanel({ api, meetingId, lookup, onCite: highlightSegment }) : null;
 
 let currentUser = null;
 let gen = 0; // identity/load generation; stale loads compare against it
@@ -63,6 +88,9 @@ function clearTranscript(title = 'Transcript') {
   viewLang = '';
   translations.clear();
   translateRun += 1;
+  segIndex.clear();
+  askPanel?.transcriptReady([]); // hides the panel until a transcript is shown again (keeps the conversation)
+  livePanel?.transcriptReady([], { loaded: false });
   $('segments').replaceChildren();
   $('segments').className = '';
   setExportVisible(false);
@@ -114,6 +142,7 @@ function renderSegments(meeting, items, complete) {
   const textEls = [];
   const frag = document.createDocumentFragment();
   let prev = null;
+  segIndex.clear();
   const slots = new Map(); // speaker -> colour slot, in order of first appearance (6 distinct)
   for (const s of items) {
     const speakerName = s.speaker || 'Unknown speaker';
@@ -128,6 +157,7 @@ function renderSegments(meeting, items, complete) {
     const text = el('div', 'text', s.text);
     body.append(speaker, text);
     row.append(timeEl, body);
+    segIndex.set(s.id, { row, time: F.time(new Date(s.ts)), speaker: speakerName, text: s.text });
     frag.append(row);
     textEls.push(text);
     out.push(`[${time}] ${speakerName}: ${s.text}`);
@@ -142,6 +172,9 @@ function renderSegments(meeting, items, complete) {
   lines = complete ? out : [];
   shown = { meeting, items, textEls, complete };
   setExportVisible(complete && items.length > 0); // never copy a partial transcript as if it were whole
+  askPanel?.transcriptReady(items, { focus: askFocus });
+  livePanel?.transcriptReady(items, { loaded: true, focus: askFocus });
+  if (items.length || live) askFocus = false;
   // Live reloads keep the reader's chosen language.
   setupTranslation(items).then(() => { if (viewLang) applyLanguage(viewLang, { quiet: true }); });
 }
@@ -368,6 +401,8 @@ if (params.get('error')) {
     if (!changed) { currentUser = user; return; }
     gen += 1; // invalidate anything loading for the previous identity
     currentUser = user;
+    askPanel?.setUser(user); // stops any answer in progress and clears the old account's conversation
+    livePanel?.setUser(user); // drops the old account's cards; the worker stops its work on its own
     clearTranscript();
     setNotice(null);
     lastSavedAt = null;

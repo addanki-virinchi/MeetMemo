@@ -75,6 +75,12 @@ function openViewer(browser, backend, query = '?id=m1') {
   const createApiClient = loadApiClient();
   const { els, document } = fakeDom(['title', 'meta', 'copy', 'error', 'notice', 'segments', 'platform', 'download', 'print', 'translate-box', 'translate-to', 'translate-status']);
   const copied = [];
+  // Ask AI panel stub: records what transcript.js tells it (its own behaviour is tested separately).
+  const panelCalls = [];
+  const createAskPanel = () => ({
+    setUser: (u) => panelCalls.push(['setUser', u ? u.uid : null]),
+    transcriptReady: (items) => panelCalls.push(['transcriptReady', items.length]),
+  });
   const ctx = runModulePage('transcript.js', {
     chrome: chromeApi,
     MeetMemoSession: S,
@@ -85,9 +91,15 @@ function openViewer(browser, backend, query = '?id=m1') {
   }, {
     createAuthProvider: () => provider,
     createClient: (p) => createApiClient({ baseUrl: 'http://api.test', authProvider: p, fetchImpl: backend.fetchImpl }),
+    createAskPanel,
+    // The live view uses the MeetMemo AI panel instead; same stub contract.
+    createLivePanel: () => ({
+      setUser: (u) => panelCalls.push(['setUser', u ? u.uid : null]),
+      transcriptReady: (items) => panelCalls.push(['transcriptReady', items.length]),
+    }),
   });
   const text = () => els.segments.textContent;
-  return { els, ctx, copied, text, rows: () => els.segments.children.length };
+  return { els, ctx, copied, text, panelCalls, rows: () => els.segments.children.length };
 }
 
 const seg = (i, ts = 1000) => ({ id: `s${i}`, ts, text: `line ${i}`, speaker: 'Ada' });
@@ -172,6 +184,23 @@ test('VIEW-02: switching to account B re-authorizes; B never sees A\'s transcrip
   assert.equal(v.rows(), 0);
   assert.match(v.els.error.textContent, /not found/i);
   assert.equal(backend.st.authSeen.at(-1), 'B');
+});
+
+test('VIEW-AI-01: the Ask AI panel follows the signed-in account and the rendered transcript', async () => {
+  const browser = createBrowser(); const backend = viewerBackend();
+  backend.st.segments = [seg(1), seg(2)];
+  await browser.local.set({ meetmemo_session: sessionFor('A', 's1') });
+  const v = openViewer(browser, backend);
+  await settle(60);
+  assert.deepEqual(v.panelCalls.filter(([k]) => k === 'setUser'), [['setUser', 'A']]);
+  assert.deepEqual(v.panelCalls.at(-1), ['transcriptReady', 2]);
+  await browser.local.remove('meetmemo_session');
+  await settle(60);
+  assert.deepEqual(v.panelCalls.filter(([k]) => k === 'setUser').at(-1), ['setUser', null], 'sign-out clears the panel');
+  await browser.local.set({ meetmemo_session: sessionFor('B', 's2') });
+  await settle(60);
+  assert.deepEqual(v.panelCalls.filter(([k]) => k === 'setUser').at(-1), ['setUser', 'B']);
+  assert.notDeepEqual(v.panelCalls.at(-1), ['transcriptReady', 2], "B never gets A's transcript in the panel");
 });
 
 // ---------------------------------------------------------------- SHARE-01
@@ -289,6 +318,9 @@ test('ROUTE-01: worker opens the right page for each panel action', async () => 
   await tab.runtime.sendMessage({ type: 'meetmemo-open', target: 'transcript', meeting });
   await settle(40);
   assert.deepEqual(browser.opened.at(-1), { kind: 'tab', url: 'chrome-extension://ext/transcript.html?id=meet-1&live=1', index: 5, windowId: 9 });
+  await tab.runtime.sendMessage({ type: 'meetmemo-open', target: 'transcript', meeting, ask: true });
+  await settle(40);
+  assert.equal(browser.opened.at(-1).url, 'chrome-extension://ext/transcript.html?id=meet-1&live=1&ask=1', 'Ask AI opens the panel');
   await tab.runtime.sendMessage({ type: 'meetmemo-open', target: 'unavailable', feature: 'billing' });
   await settle(20);
   assert.equal(browser.opened.at(-1).url, 'chrome-extension://ext/unavailable.html?feature=billing');
@@ -337,7 +369,7 @@ test('ROUTE-01: bundle bridge anchors are present exactly once', () => {
   once(background, 'await chrome.tabs.create({url:chrome.runtime.getURL("auth.html")})');
   const manifest = JSON.parse(read('manifest.json'));
   const sync = manifest.content_scripts.find((c) => c.js.includes('sync/content.js'));
-  assert.deepEqual(sync.js, ['extension-auth/session.js', 'extension-auth/localBridge.js', 'extension-auth/links.js', 'extension-auth/panelPrivacy.js', 'sync/content.js']);
+  assert.deepEqual(sync.js, ['extension-auth/session.js', 'extension-auth/localBridge.js', 'extension-auth/links.js', 'extension-auth/panelPrivacy.js', 'sync/live-detect.js', 'sync/content.js']);
   // Privacy popover and "Notify in chat" no longer point at the old hosted domain.
   once(content, 'self.MEETMEMO_PANEL_PRIVACY?self.MEETMEMO_PANEL_PRIVACY.items(ye.default):');
   assert.equal(content.split('MeetMemo.io/r/notetaking').length - 1, 0);
@@ -390,7 +422,7 @@ test('FORMAT-01: meeting headings, durations and preferences', async () => {
   assert.equal(F.speakerSlot('Ada'), F.speakerSlot('Ada'));
   assert.equal(F.toDate({ _seconds: 0 }).getTime(), 0);
   assert.equal(F.toDate('garbage'), null);
-  assert.deepEqual({ ...(await F.getPrefs()) }, { readingLanguage: '', aiLanguage: '' });
+  assert.deepEqual({ ...(await F.getPrefs()) }, { readingLanguage: '', aiLanguage: '', aiPanelOpen: true });
   await F.setPrefs({ readingLanguage: 'hi' });
   assert.equal((await F.getPrefs()).readingLanguage, 'hi');
   assert.equal((await F.getPrefs()).aiLanguage, '');

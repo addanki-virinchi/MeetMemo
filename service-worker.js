@@ -14,4 +14,5 @@ importScripts(
   'extension-auth/sessionAuthority.js',
   'sync/segment-id.js',
   'sync/worker.js',
+  'sync/live-worker.js', // live auto-answer; uses the sync engine's meeting mappings
 );

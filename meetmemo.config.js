@@ -4,5 +4,5 @@
 // updates this file and the matching manifest.json "host_permissions" entry together.
 // Moving hosts (Render -> DigitalOcean -> ...) only means running that script again.
 self.MEETMEMO_CONFIG = {
-  apiBaseUrl: 'https://meetmemo-api.onrender.com',
+  apiBaseUrl: 'http://localhost:8080',
 };

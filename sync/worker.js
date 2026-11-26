@@ -363,14 +363,14 @@
   const OWN_PAGES = ['history', 'settings', 'help', 'privacy'];
   const openTab = (url, tab) => chrome.tabs.create({ url, ...(tab ? { index: tab.index + 1, windowId: tab.windowId } : {}) });
 
-  async function openTranscript(meeting, tab) {
+  async function openTranscript(meeting, tab, { ask = false } = {}) {
     const user = await authority.getUser();
     if (!user) return openSignIn(); // saving and viewing need an account
     await engine.claimAnonymous(user);
     try {
       const mapping = await engine.ensureMeeting(user.uid, meeting.sessionId, meeting);
       engine.drain();
-      return openTab(pageUrl(`transcript.html?id=${encodeURIComponent(mapping.meetingId)}&live=1`), tab);
+      return openTab(pageUrl(`transcript.html?id=${encodeURIComponent(mapping.meetingId)}&live=1${ask ? '&ask=1' : ''}`), tab);
     } catch (err) {
       // Signed in but the meeting could not be created (backend down, etc.): show the
       // failure in the viewer instead of pretending the user needs to sign in.
@@ -381,7 +381,7 @@
   chrome.runtime.onMessage.addListener((msg, sender) => {
     if (msg?.type !== 'meetmemo-open' || sender.id !== chrome.runtime.id) return;
     let run;
-    if (msg.target === 'transcript' && msg.meeting?.sessionId) run = openTranscript(msg.meeting, sender.tab);
+    if (msg.target === 'transcript' && msg.meeting?.sessionId) run = openTranscript(msg.meeting, sender.tab, { ask: msg.ask === true });
     else if (msg.target === 'unavailable') run = openTab(pageUrl(`unavailable.html?feature=${encodeURIComponent(msg.feature || 'hosted')}`), sender.tab);
     else if (msg.target === 'page') {
       if (!OWN_PAGES.includes(msg.page)) return; // only the extension's own pages
