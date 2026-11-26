@@ -12,11 +12,11 @@ import {
   ACTIONS, OUTPUT_SCHEMAS, MAX_TRANSCRIPT_LINES, buildDocsBlock, mergeTranscript, buildAssistRequest,
 } from '../ai/assist.js';
 
-// In-meeting assistant actions (the Claude tab in the Meet panel): "Ask this question",
-// "What to ask next" and "Steer to close". Mounted at /v1/meetings/:id/ai/assist behind
+// In-meeting assistant actions (the Claude tab in the Meet panel): "Answer Client",
+// "Next Best Question" and "Close the Conversation". Mounted at /v1/meetings/:id/ai/assist behind
 // requireAuth. Reads the meeting (ownership), the most recent saved lines, and the user's active
 // context documents; stores nothing. The client sends its newest caption lines, which may not be
-// saved yet, and the suggestions it already showed (so "What to ask next" does not repeat itself).
+// saved yet, and the suggestions it already showed (so "Next Best Question" does not repeat itself).
 
 const SAVED_LINES = 150; // saved tail merged with the client's lines
 const TIMEOUT_MS = 45_000;

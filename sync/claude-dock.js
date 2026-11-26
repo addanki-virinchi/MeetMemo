@@ -13,6 +13,9 @@
   const TOGGLE_SEL = '[data-meetmemo-claude-toggle]';
   const FEED_SEL = '[data-meetmemo-claude-feed]';
   const CLAUDE = '#D97757';
+  // The draggable answer overlay (mountOverlay below) is kept but not shown in the Meet panel.
+  // Set to true to bring it back; the Claude switch and the live view are unaffected.
+  const SHOW_OVERLAY = false;
 
   const ERRORS = {
     ai_unavailable: "Claude isn't set up on the MeetMemo server.",
@@ -401,7 +404,7 @@
     if (dead) return;
     let mounted = false;
     for (const host of document.querySelectorAll(TOGGLE_SEL)) mounted = mount(host, 'toggle') || mounted;
-    for (const host of document.querySelectorAll(FEED_SEL)) mounted = mount(host, 'feed') || mounted;
+    if (SHOW_OVERLAY) for (const host of document.querySelectorAll(FEED_SEL)) mounted = mount(host, 'feed') || mounted;
     for (const m of [...mounts]) if (!m.host.isConnected) discard(m);
     if (!mounts.size) return;
     watch();

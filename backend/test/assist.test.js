@@ -144,7 +144,7 @@ test('CTX-03: validation, size fitting and the per-account document cap', async 
 
 // ------------------------------------------------------------------ assist actions
 
-test('ASSIST-01: Ask this question uses active documents, saved + live lines, and returns the answer', async () => {
+test('ASSIST-01: Answer Client uses active documents, saved + live lines, and returns the answer', async () => {
   await call('A1', 'POST', '/v1/context-docs', { name: 'acme.txt', text: 'Acme pricing: Growth plan 1,200 EUR/month, includes EU data residency.' });
   const hidden = await call('A1', 'POST', '/v1/context-docs', { name: 'old.txt', text: 'OUTDATED PRICE LIST' });
   await call('A1', 'PATCH', `/v1/context-docs/${hidden.body.id}`, { active: false });
@@ -183,7 +183,7 @@ test('ASSIST-01: Ask this question uses active documents, saved + live lines, an
   assert.ok(text.includes('Action: ASK THIS QUESTION'));
 });
 
-test('ASSIST-02: What to ask next sends earlier suggestions; Steer to close returns the next step', async () => {
+test('ASSIST-02: Next Best Question sends earlier suggestions; Close the Conversation returns the next step', async () => {
   const id = await meeting('A2');
   script = { parsed: { text: 'Who else is involved in approving a new tool?', why: 'Budget owner unknown.', covered: ['Invoice volume'] } };
   const next = await call('A2', 'POST', `/v1/meetings/${id}/ai/assist`, {

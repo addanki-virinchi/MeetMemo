@@ -1,5 +1,5 @@
 // Meeting assistant: the three on-demand actions in the Meet panel's Claude tab
-// ("Ask this question", "What to ask next", "Steer to close"). Each one reads the user's active
+// ("Answer Client", "Next Best Question", "Close the Conversation"). Each one reads the user's active
 // context documents (uploaded on the Meetings page: anything about the client, the product, the
 // agenda or prepared questions) plus the live transcript, and returns one short, speakable reply.
 //

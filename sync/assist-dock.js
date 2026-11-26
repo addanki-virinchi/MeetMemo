@@ -4,9 +4,9 @@
 // three quick prompts used to be. React never touches the inside of that element, so this script
 // mounts its own UI there in a shadow root and re-mounts whenever React re-creates it:
 //
-//   Ask this question   answers the other side's latest question
-//   What to ask next    the best next question (prepared questions first, never a repeat)
-//   Steer to close      a natural line that moves the call toward a next step
+//   Answer Client            answers the other side's latest question
+//   Next Best Question       the best next question (prepared questions first, never a repeat)
+//   Close the Conversation   a natural line that moves the call toward a next step
 //
 // Every answer appears in the same widget. Requests go to the service worker
 // (sync/assist-worker.js) over the "meetmemo-assist" port with this tab's newest caption lines;
@@ -20,24 +20,24 @@
   const ACTIONS = [
     {
       id: 'answer',
-      label: 'Ask this question',
-      hint: "Answer the client's latest question",
+      label: 'Answer Client',
+      hint: "Reply to the client's latest question",
       icon: '<path d="M21 12a8 8 0 0 1-11.6 7.1L4 20l1-4.4A8 8 0 1 1 21 12z"/><path d="M9.5 9.5a2.5 2.5 0 1 1 3.3 2.4c-.5.2-.8.7-.8 1.2V14"/><path d="M12 17h.01"/>',
-      result: 'Suggested answer',
+      result: 'Answer for the client',
     },
     {
       id: 'next',
-      label: 'What to ask next',
-      hint: 'The best follow-up for this moment',
+      label: 'Next Best Question',
+      hint: 'The most useful follow-up, never a repeat',
       icon: '<path d="M5 12h14"/><path d="m13 6 6 6-6 6"/>',
-      result: 'Ask next',
+      result: 'Next best question',
     },
     {
       id: 'close',
-      label: 'Steer to close',
-      hint: 'Move toward a concrete next step',
+      label: 'Close the Conversation',
+      hint: 'Guide toward a proposal, call or decision',
       icon: '<path d="M4 21V4"/><path d="M4 4h12l-2 4 2 4H4"/>',
-      result: 'Steer to close',
+      result: 'Closing line',
     },
   ];
   const byId = Object.fromEntries(ACTIONS.map((a) => [a.id, a]));
