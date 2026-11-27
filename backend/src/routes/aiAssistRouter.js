@@ -8,6 +8,7 @@ import { logger } from '../logger.js';
 import { isValidSegmentDocId } from '../lib/segments.js';
 import { resolveTimeZone } from '../ai/transcript.js';
 import { AI_MESSAGES, mapAiError } from '../ai/errors.js';
+import { modelField, effortField, applyModelChoice, slowness, DEFAULT_EFFORT } from '../ai/models.js';
 import {
   ACTIONS, OUTPUT_SCHEMAS, MAX_TRANSCRIPT_LINES, buildDocsBlock, mergeTranscript, buildAssistRequest,
 } from '../ai/assist.js';
@@ -35,6 +36,8 @@ const assistSchema = z.object({
   userName: z.string().max(200).optional(),
   answerLanguage: z.string().regex(/^[a-z]{2,3}(-[A-Za-z0-9]{2,8})*$/).optional(),
   timeZone: z.string().max(64).optional(),
+  model: modelField,
+  effort: effortField,
 }).strict();
 
 export function createAssistRouter({
@@ -82,7 +85,7 @@ export function createAssistRouter({
       clientLines: body.lines,
     });
     const docsBlock = buildDocsBlock(docs);
-    const params = buildAssistRequest({
+    const params = applyModelChoice(buildAssistRequest({
       action: body.action,
       model,
       docsBlock,
@@ -92,13 +95,15 @@ export function createAssistRouter({
       previous: body.previous,
       timeZone: resolveTimeZone(body.timeZone),
       answerLanguage: body.answerLanguage,
-    });
+    }), body, { fallback: model });
+    const usedModel = params.model;
+    const usedEffort = body.effort || DEFAULT_EFFORT;
     params.output_config = { ...params.output_config, format: zodOutputFormat(OUTPUT_SCHEMAS[body.action]) };
 
     const startedAt = Date.now();
     let message;
     try {
-      message = await anthropic.messages.parse(params, { signal: AbortSignal.timeout(timeoutMs) });
+      message = await anthropic.messages.parse(params, { signal: AbortSignal.timeout(Math.round(timeoutMs * slowness(body, model))) });
     } catch (err) {
       if (err instanceof Anthropic.APIUserAbortError || err?.name === 'TimeoutError' || err?.name === 'AbortError') {
         throw httpError(504, 'ai_timeout', AI_MESSAGES.ai_timeout);
@@ -109,7 +114,7 @@ export function createAssistRouter({
     }
     const u = message.usage || {};
     logger.info({
-      action: body.action, model, ms: Date.now() - startedAt, lines: lines.length, docs: docsBlock.used,
+      action: body.action, model: usedModel, effort: usedEffort, ms: Date.now() - startedAt, lines: lines.length, docs: docsBlock.used,
       stopReason: message.stop_reason,
       usage: { input: u.input_tokens ?? 0, output: u.output_tokens ?? 0, cacheRead: u.cache_read_input_tokens ?? 0 },
     }, 'Assist answered');
@@ -121,6 +126,8 @@ export function createAssistRouter({
     res.json({
       action: body.action,
       ...out,
+      model: usedModel,
+      effort: usedEffort,
       context: { documents: docsBlock.used, omitted: docsBlock.omitted, cut: docsBlock.cut, lines: lines.length },
     });
   }));

@@ -233,6 +233,8 @@
               question: job.question,
               context: job.context,
               ...(prefs.aiLanguage ? { answerLanguage: prefs.aiLanguage } : {}),
+              ...(['claude-haiku-5-5', 'claude-sonnet-5-5', 'claude-opus-5-5'].includes(prefs.aiModel) ? { model: prefs.aiModel } : {}),
+              ...(['low', 'medium', 'high'].includes(prefs.aiEffort) ? { effort: prefs.aiEffort } : {}),
               timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone,
               ...(job.retry ? { retry: true } : {}),
             }),

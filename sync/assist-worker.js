@@ -9,7 +9,7 @@
 (() => {
   const PORT_NAME = 'meetmemo-assist';
   const PREFS_KEY = 'meetmemo_prefs';
-  const TIMEOUT_MS = 90_000; // a sleeping free-tier host can take ~50 s to wake up, then Claude answers
+  const TIMEOUT_MS = 240_000; // a sleeping host can take ~50 s to wake up; Opus at high effort can think for minutes
   const MAX_LINES = 600;
   const fail = (code, message) => Object.assign(new Error(message || code), { code });
 
@@ -67,6 +67,8 @@
         previous,
         ...(msg.userName ? { userName: String(msg.userName).slice(0, 200) } : {}),
         ...(prefs.aiLanguage ? { answerLanguage: prefs.aiLanguage } : {}),
+        ...(['claude-haiku-5-5', 'claude-sonnet-5-5', 'claude-opus-5-5'].includes(prefs.aiModel) ? { model: prefs.aiModel } : {}),
+        ...(['low', 'medium', 'high'].includes(prefs.aiEffort) ? { effort: prefs.aiEffort } : {}),
         ...(timeZone ? { timeZone } : {}),
       });
     }

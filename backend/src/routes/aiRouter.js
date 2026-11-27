@@ -7,6 +7,7 @@ import { FEATURES } from '../ai/prompts.js';
 import { buildTranscriptContext, resolveTimeZone, MAX_CONTEXT_CHARS } from '../ai/transcript.js';
 import { createCitationRewriter, citationsToLines } from '../ai/citations.js';
 import { AI_MESSAGES, mapAiError } from '../ai/errors.js';
+import { modelField, effortField, applyModelChoice, DEFAULT_EFFORT } from '../ai/models.js';
 import { createLiveRouter } from './aiLiveRouter.js';
 import { createAssistRouter } from './aiAssistRouter.js';
 
@@ -30,6 +31,8 @@ const askSchema = z.object({
   regenerate: z.boolean().optional(),
   answerLanguage: z.string().regex(/^[a-z]{2,3}(-[A-Za-z0-9]{2,8})*$/).optional(),
   timeZone: z.string().max(64).optional(),
+  model: modelField,
+  effort: effortField,
 }).strict().refine((b) => (b.regenerate ? !!b.threadId : !!b.question), {
   message: 'question is required (or threadId with regenerate: true)',
 });
@@ -101,7 +104,7 @@ export function createAiRouter({
   }
 
   // Order is fixed for prompt caching: system, then the transcript block (cached), then turns.
-  function buildRequest(ctx, turns, question, answerLanguage) {
+  function buildRequest(ctx, turns, question, answerLanguage, choice) {
     const all = [...turns, [question, null]];
     const messages = [];
     all.forEach(([q, a], i) => {
@@ -113,13 +116,12 @@ export function createAiRouter({
       });
       if (a !== null) messages.push({ role: 'assistant', content: a });
     });
-    return {
-      model,
+    // Grounded Q&A over provided text: low effort unless the user picked another model/effort.
+    return applyModelChoice({
       max_tokens: MAX_TOKENS,
       system: [{ type: 'text', text: feature.system({ answerLanguage }) }],
       messages,
-      output_config: { effort: 'low' }, // grounded Q&A over provided text; Haiku 5.5 defaults to medium
-    };
+    }, choice, { fallback: model });
   }
 
   const askLimiter = rateLimit({
@@ -212,7 +214,7 @@ export function createAiRouter({
     if (!threadRef) {
       threadRef = meetingRef.collection('aiThreads').doc();
       batch.set(threadRef, {
-        feature: 'qa', title: question.slice(0, 80), model,
+        feature: 'qa', title: question.slice(0, 80), model: body.model || model,
         createdAt: FieldValue.serverTimestamp(), updatedAt: FieldValue.serverTimestamp(),
       });
     } else {
@@ -260,7 +262,7 @@ export function createAiRouter({
     let stopReason = null;
     let usage = null;
     try {
-      stream = anthropic.messages.stream(buildRequest(ctx, priorTurns(history, ctx), question, body.answerLanguage));
+      stream = anthropic.messages.stream(buildRequest(ctx, priorTurns(history, ctx), question, body.answerLanguage, body));
       for await (const event of stream) {
         if (event.type === 'content_block_delta' && event.delta?.type === 'text_delta') emit(rewriter.push(event.delta.text));
       }
@@ -286,7 +288,7 @@ export function createAiRouter({
 
     try {
       await answerRef.set({
-        role: 'assistant', text, citations: [...rewriter.citations], status, errorCode, stopReason, model, usage,
+        role: 'assistant', text, citations: [...rewriter.citations], status, errorCode, stopReason, model: body.model || model, effort: body.effort || DEFAULT_EFFORT, usage,
         lineCountAtAsk: ctx.lineCount, seq: Math.max(now(), startedAt + 1), createdAt: FieldValue.serverTimestamp(),
       });
       await threadRef.update({ updatedAt: FieldValue.serverTimestamp() });

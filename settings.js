@@ -41,6 +41,18 @@ async function initPreferences() {
     flash(e.target.value ? `Saved. Ask Meet Memo will answer in ${F.languageName(e.target.value)}.` : 'Saved. Ask Meet Memo will answer in the language you ask in.');
   });
 
+  const modelNames = { 'claude-haiku-5-5': 'Haiku 5.5', 'claude-sonnet-5-5': 'Sonnet 5.5', 'claude-opus-5-5': 'Opus 5.5' };
+  $('ai-model').value = modelNames[prefs.aiModel] ? prefs.aiModel : 'claude-haiku-5-5';
+  $('ai-effort').value = ['low', 'medium', 'high'].includes(prefs.aiEffort) ? prefs.aiEffort : 'low';
+  $('ai-model').addEventListener('change', async (e) => {
+    await F.setPrefs({ aiModel: e.target.value });
+    flash(`Saved. Claude answers will use ${modelNames[e.target.value]}.`);
+  });
+  $('ai-effort').addEventListener('change', async (e) => {
+    await F.setPrefs({ aiEffort: e.target.value });
+    flash(`Saved. Effort set to ${e.target.value}.`);
+  });
+
   const support = $('translator-support');
   if (!self.Translator) {
     support.textContent = 'This browser does not have Chrome’s built-in translator (Chrome 138 or later on desktop). Transcripts will still open in their original language.';

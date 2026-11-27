@@ -7,6 +7,7 @@ import { isValidSegmentDocId } from '../lib/segments.js';
 import { liveSystem, mergeLiveContext, buildLivePrompt, createLiveParser, validateSources, MAX_CONTEXT_LINES } from '../ai/live.js';
 import { resolveTimeZone } from '../ai/transcript.js';
 import { AI_MESSAGES, mapAiError } from '../ai/errors.js';
+import { modelField, effortField, applyModelChoice, slowness } from '../ai/models.js';
 
 // Live auto-answer: one candidate question from a live meeting, decided and answered by Claude
 // Haiku from a bounded excerpt of recent lines. Mounted at /v1/meetings/:id/ai/live behind
@@ -44,6 +45,8 @@ const answerSchema = z.object({
   answerLanguage: z.string().regex(/^[a-z]{2,3}(-[A-Za-z0-9]{2,8})*$/).optional(),
   timeZone: z.string().max(64).optional(),
   retry: z.boolean().optional(),
+  model: modelField,
+  effort: effortField,
 }).strict();
 
 const words = (s) => String(s || '').trim().split(/\s+/).filter(Boolean).length;
@@ -120,7 +123,8 @@ export function createLiveRouter({
         answer: '',
         sources: [],
         errorCode: null,
-        model,
+        model: body.model || model,
+        effort: body.effort || 'low',
         attempts: (cur?.attempts || 0) + 1,
         leaseUntil: now() + LEASE_MS,
         ...(cur ? {} : { createdAt: FieldValue.serverTimestamp() }),
@@ -193,8 +197,9 @@ export function createLiveRouter({
       clearInterval(ping);
       if (!finished) { clientGone = true; abort(); }
     });
-    let firstTimer = setTimeout(() => { timedOut = true; abort(); }, firstTokenMs);
-    const totalTimer = setTimeout(() => { timedOut = true; abort(); }, totalMs);
+    const slow = slowness(body, model); // Sonnet/Opus and higher effort get more time
+    let firstTimer = setTimeout(() => { timedOut = true; abort(); }, Math.round(firstTokenMs * slow));
+    const totalTimer = setTimeout(() => { timedOut = true; abort(); }, Math.round(totalMs * slow));
 
     const parser = createLiveParser();
     let decision = null;
@@ -220,15 +225,13 @@ export function createLiveRouter({
     };
 
     try {
-      stream = anthropic.messages.stream({
-        model,
+      // Short classification-plus-answer: no thinking where the model allows it (Opus always
+      // thinks), the user's model and effort (default: server model, low), for time to first text.
+      stream = anthropic.messages.stream(applyModelChoice({
         max_tokens: MAX_TOKENS,
         system: [{ type: 'text', text: liveSystem({ answerLanguage: body.answerLanguage }) }],
         messages: [{ role: 'user', content: prompt.text }],
-        // Short classification-plus-answer on Haiku: no thinking, low effort, for time to first text.
-        thinking: { type: 'disabled' },
-        output_config: { effort: 'low' },
-      }, { signal: controller.signal });
+      }, body, { fallback: model, thinkingOff: true }), { signal: controller.signal });
       for await (const event of stream) {
         if (event.type === 'content_block_delta' && event.delta?.type === 'text_delta') {
           if (firstTimer) { clearTimeout(firstTimer); firstTimer = null; }
@@ -293,7 +296,7 @@ export function createLiveRouter({
       logger.error({ meetingId, questionId: body.questionId, code: err.code }, 'Could not save live answer');
     }
     // Ids, status and token counts only: never question, transcript or answer text.
-    logger.info({ meetingId, questionId: body.questionId, status, errorCode, stopReason, usage, lines: lines.length, firstTextMs, ms: now() - startedAt }, 'Live answer');
+    logger.info({ meetingId, questionId: body.questionId, model: body.model || model, effort: body.effort || 'low', status, errorCode, stopReason, usage, lines: lines.length, firstTextMs, ms: now() - startedAt }, 'Live answer');
 
     if (deleted) write('error', { code: 'not_found', message: 'This meeting was deleted.' });
     else if (status === 'error') write('error', { code: errorCode, message: AI_MESSAGES[errorCode] || AI_MESSAGES.ai_failed, shown });

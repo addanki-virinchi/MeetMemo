@@ -42,6 +42,23 @@
   ];
   const byId = Object.fromEntries(ACTIONS.map((a) => [a.id, a]));
 
+  // Model picker (shared with the live answers and Ask Meet Memo through meetmemo_prefs).
+  const PREFS_KEY = 'meetmemo_prefs';
+  const MODELS = [
+    { id: 'claude-haiku-5-5', name: 'Haiku 5.5', hint: 'Fastest answers, lowest cost' },
+    { id: 'claude-sonnet-5-5', name: 'Sonnet 5.5', hint: 'Balanced speed and depth' },
+    { id: 'claude-opus-5-5', name: 'Opus 5.5', hint: 'Most capable, slowest' },
+  ];
+  const EFFORTS = [
+    { id: 'low', name: 'Low' },
+    { id: 'medium', name: 'Medium' },
+    { id: 'high', name: 'High' },
+  ];
+  const DEFAULT_MODEL = MODELS[0].id;
+  const DEFAULT_EFFORT = 'low';
+  const modelName = (id) => MODELS.find((m) => m.id === id)?.name || 'Claude';
+  const effortName = (id) => EFFORTS.find((e) => e.id === id)?.name || '';
+
   const ERRORS = {
     signed_out: 'Sign in to MeetMemo to use Claude.',
     account_changed: 'The signed-in account changed. Try again.',
@@ -95,6 +112,31 @@
     .ctx { margin-inline-start: auto; color: #8b8b95; font-size: 11.5px; }
     .link { padding: 3px 7px; border: 0; border-radius: 5px; background: transparent; color: #e3d1ff; font-size: 12px; cursor: pointer; }
     .link:hover { background: rgba(255,255,255,.1); }
+    .picker { position: relative; margin: 0 0 10px; }
+    .pick { display: flex; align-items: center; gap: 7px; width: 100%; padding: 7px 10px; text-align: left;
+      background: #1f1f23; border: 1px solid #3c3d41; border-radius: 8px; cursor: pointer; }
+    .pick:hover { background: #29292e; border-color: #4a4b50; }
+    .pick .spark { color: ${CLAUDE}; font-size: 15px; line-height: 1; }
+    .pick b { font-weight: 500; color: #fff; }
+    .pick .eff { color: #a1a1aa; font-size: 12px; }
+    .pick .chev { margin-inline-start: auto; color: #a1a1aa; transition: transform .12s; }
+    .pick[aria-expanded="true"] .chev { transform: rotate(180deg); }
+    .menu { position: absolute; z-index: 2; top: calc(100% + 4px); left: 0; right: 0; padding: 6px;
+      background: #26252c; border: 1px solid #45444d; border-radius: 10px; box-shadow: 0 10px 28px rgba(0,0,0,.5); }
+    .menu h3 { margin: 4px 8px; color: #a1a1aa; font-size: 11.5px; font-weight: 500; }
+    .opt { display: grid; grid-template-columns: 1fr 16px; align-items: center; width: 100%; padding: 7px 8px;
+      border: 0; border-radius: 6px; background: transparent; text-align: left; cursor: pointer; }
+    .opt:hover, .opt:focus-visible { background: #33323b; }
+    .opt b { font-weight: 500; color: #fff; font-size: 13.5px; }
+    .opt small { grid-column: 1; color: #a1a1aa; font-size: 12px; }
+    .opt .tick { grid-column: 2; grid-row: 1 / span 2; color: ${CLAUDE}; visibility: hidden; }
+    .opt[aria-checked="true"] .tick { visibility: visible; }
+    .sep { height: 1px; margin: 6px 2px; background: #3c3d41; }
+    .seg { display: grid; grid-template-columns: repeat(3, 1fr); gap: 2px; margin: 2px 6px 6px; padding: 2px;
+      background: #1b1b1f; border-radius: 7px; }
+    .seg button { padding: 5px 0; border: 0; border-radius: 5px; background: transparent; color: #c4c4cc; font-size: 12.5px; cursor: pointer; }
+    .seg button[aria-checked="true"] { background: #3a3943; color: #fff; }
+    .menu p { margin: 0 8px 4px; color: #8b8b95; font-size: 11.5px; }
     .skeleton { display: grid; gap: 7px; }
     .skeleton i { display: block; height: 11px; border-radius: 4px; background: linear-gradient(90deg, #2e2c36 0%, #3a3745 50%, #2e2c36 100%); background-size: 200% 100%; animation: shimmer 1.2s linear infinite; }
     .skeleton i:nth-child(2) { width: 85%; }
@@ -126,6 +168,26 @@
   let docs = null; // { active, total } | null when unknown
   let docsAt = 0;
   const mounts = new Set(); // { host, root, update }
+  let choice = { model: DEFAULT_MODEL, effort: DEFAULT_EFFORT };
+
+  function readChoice(prefs) {
+    const p = prefs && typeof prefs === 'object' ? prefs : {};
+    choice = {
+      model: MODELS.some((m) => m.id === p.aiModel) ? p.aiModel : DEFAULT_MODEL,
+      effort: EFFORTS.some((e) => e.id === p.aiEffort) ? p.aiEffort : DEFAULT_EFFORT,
+    };
+  }
+  async function saveChoice(patch) {
+    choice = { ...choice, ...patch };
+    render();
+    try {
+      const prev = (await chrome.storage.local.get(PREFS_KEY))[PREFS_KEY];
+      const next = { ...(prev && typeof prev === 'object' ? prev : {}) };
+      if (patch.model) next.aiModel = patch.model;
+      if (patch.effort) next.aiEffort = patch.effort;
+      await chrome.storage.local.set({ [PREFS_KEY]: next });
+    } catch { /* extension reloaded: the choice still applies on this page */ }
+  }
 
   function meetingState() {
     const m = self.MEETMEMO_SYNC?.currentMeeting?.();
@@ -183,7 +245,8 @@
     const ctx = meetingState();
     if (!ctx) { current = { action, at: Date.now(), error: { code: 'no_meeting' } }; render(); return; }
     busy = action;
-    current = { action, at: Date.now(), loading: true };
+    const asked = { model: choice.model, effort: choice.effort };
+    current = { action, at: Date.now(), loading: true, ...asked };
     render();
     const r = await request({
       type: 'assist',
@@ -195,7 +258,7 @@
     });
     busy = null;
     if (r.ok) {
-      current = { action, at: Date.now(), data: r.data };
+      current = { action, at: Date.now(), data: r.data, ...asked };
       const said = r.data.text && !(action === 'answer' && r.data.found === false);
       if (said) {
         ctx.st.previous.push({ action, text: r.data.text });
@@ -203,7 +266,7 @@
       }
       if (r.data.context) { docs = { ...(docs || {}), active: r.data.context.documents }; docsAt = Date.now(); }
     } else {
-      current = { action, at: Date.now(), error: r.error || { code: 'failed' } };
+      current = { action, at: Date.now(), error: r.error || { code: 'failed' }, ...asked };
     }
     ctx.st.last = current;
     render();
@@ -220,6 +283,69 @@
     docsLink.title = 'Upload or manage the documents Claude uses as context (Meetings page)';
     docsLink.addEventListener('click', () => self.MEETMEMO_LINKS?.openPage('history'));
     head.append(title, docsLink);
+
+    // ---- model picker: "✳ Sonnet 5.5 · Medium effort ▾" opens a menu of models and effort ----
+    const picker = el('div', 'picker');
+    const pick = el('button', 'pick');
+    pick.type = 'button';
+    pick.title = 'Choose which Claude model answers, and how hard it thinks';
+    pick.setAttribute('aria-haspopup', 'true');
+    pick.setAttribute('aria-expanded', 'false');
+    const spark = el('span', 'spark', '✳');
+    spark.setAttribute('aria-hidden', 'true');
+    const pickName = el('b');
+    const pickEffort = el('span', 'eff');
+    const chev = el('span', 'chev', '▾');
+    chev.setAttribute('aria-hidden', 'true');
+    pick.append(spark, pickName, pickEffort, chev);
+
+    const menu = el('div', 'menu');
+    menu.hidden = true;
+    menu.setAttribute('role', 'menu');
+    menu.setAttribute('aria-label', 'Claude model and effort');
+    const modelOpts = MODELS.map((m) => {
+      const b = el('button', 'opt');
+      b.type = 'button';
+      b.setAttribute('role', 'menuitemradio');
+      b.dataset.model = m.id;
+      const tick = el('span', 'tick', '✓');
+      tick.setAttribute('aria-hidden', 'true');
+      b.append(el('b', '', m.name), tick, el('small', '', m.hint));
+      b.addEventListener('click', () => saveChoice({ model: m.id }));
+      return b;
+    });
+    const seg = el('div', 'seg');
+    seg.setAttribute('role', 'radiogroup');
+    seg.setAttribute('aria-label', 'Effort');
+    const effortOpts = EFFORTS.map((e) => {
+      const b = el('button', '', e.name);
+      b.type = 'button';
+      b.setAttribute('role', 'radio');
+      b.dataset.effort = e.id;
+      b.addEventListener('click', () => saveChoice({ effort: e.id }));
+      seg.append(b);
+      return b;
+    });
+    menu.append(
+      el('h3', '', 'Model'), ...modelOpts, el('div', 'sep'),
+      el('h3', '', 'Effort'), seg,
+      el('p', '', 'Higher effort thinks longer before answering: slower, often more accurate. Also used for live answers and Ask Meet Memo.'),
+    );
+    picker.append(pick, menu);
+
+    const setOpen = (open) => {
+      menu.hidden = !open;
+      pick.setAttribute('aria-expanded', String(open));
+      if (open) (modelOpts.find((b) => b.dataset.model === choice.model) || modelOpts[0]).focus();
+    };
+    pick.addEventListener('click', () => setOpen(menu.hidden));
+    picker.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape' && !menu.hidden) { e.stopPropagation(); setOpen(false); pick.focus(); }
+    });
+    // Close on any click outside the picker (composedPath sees through the shadow root).
+    document.addEventListener('pointerdown', (e) => {
+      if (!menu.hidden && !e.composedPath().includes(picker)) setOpen(false);
+    }, true);
 
     const actions = el('div', 'actions');
     const buttons = ACTIONS.map((a) => {
@@ -266,7 +392,7 @@
     foot.append(copy, again, signIn, ctxInfo);
     result.append(label, skeleton, q, text, note, error, foot);
 
-    wrap.append(head, actions, result);
+    wrap.append(head, picker, actions, result);
     root.append(wrap);
 
     return () => {
@@ -274,6 +400,11 @@
       docsLink.textContent = !known ? 'Meeting documents'
         : docs.active === 0 ? 'Add meeting documents'
           : `Using ${docs.active} document${docs.active === 1 ? '' : 's'}`;
+
+      pickName.textContent = modelName(choice.model);
+      pickEffort.textContent = `· ${effortName(choice.effort)} effort`;
+      for (const b of modelOpts) b.setAttribute('aria-checked', String(b.dataset.model === choice.model));
+      for (const b of effortOpts) b.setAttribute('aria-checked', String(b.dataset.effort === choice.effort));
 
       for (const b of buttons) {
         b.disabled = !!busy;
@@ -284,7 +415,10 @@
       if (!current) return;
       const meta = byId[current.action];
       labelText.textContent = meta.result;
-      labelTime.textContent = clock(current.at);
+      // Which model and effort produced this result, so answers can be compared.
+      const usedModel = current.data?.model || current.model;
+      const usedEffort = current.data?.effort || current.effort;
+      labelTime.textContent = [clock(current.at), usedModel && modelName(usedModel), usedEffort && effortName(usedEffort)].filter(Boolean).join(' · ');
       skeleton.hidden = !current.loading;
 
       const d = current.data;
@@ -351,6 +485,10 @@
   const schedule = () => { if (!scanTimer) scanTimer = setTimeout(scan, 120); };
 
   function start() {
+    try {
+      chrome.storage.local.get(PREFS_KEY).then((r) => { readChoice(r[PREFS_KEY]); render(); }, () => {});
+      chrome.storage.onChanged.addListener((c, area) => { if (area === 'local' && PREFS_KEY in c) { readChoice(c[PREFS_KEY].newValue); render(); } });
+    } catch { /* extension reloaded */ }
     new MutationObserver(schedule).observe(document.documentElement, { childList: true, subtree: true });
     // Documents uploaded on the Meetings page while this tab is open are picked up on return.
     document.addEventListener('visibilitychange', () => { if (!document.hidden && mounts.size) refreshDocs(true).catch(() => {}); });

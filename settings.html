@@ -94,6 +94,28 @@
         </div>
         <select class="input" id="ai-language"></select>
       </div>
+      <div class="setting-row">
+        <div>
+          <label class="label" for="ai-model">Claude model</label>
+          <div class="hint">Haiku is fastest and cheapest, Sonnet balances speed and depth, Opus is the most capable and slowest. Also selectable from the Claude tab in a meeting.</div>
+        </div>
+        <select class="input" id="ai-model">
+          <option value="claude-haiku-5-5">Haiku 5.5</option>
+          <option value="claude-sonnet-5-5">Sonnet 5.5</option>
+          <option value="claude-opus-5-5">Opus 5.5</option>
+        </select>
+      </div>
+      <div class="setting-row">
+        <div>
+          <label class="label" for="ai-effort">Effort</label>
+          <div class="hint">How long Claude thinks before answering. Higher is slower and often more accurate.</div>
+        </div>
+        <select class="input" id="ai-effort">
+          <option value="low">Low</option>
+          <option value="medium">Medium</option>
+          <option value="high">High</option>
+        </select>
+      </div>
     </section>
 
     <section class="card settings-section" aria-labelledby="h-data">
