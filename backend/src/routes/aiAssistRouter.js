@@ -19,7 +19,7 @@ import {
 // context documents; stores nothing. The client sends its newest caption lines, which may not be
 // saved yet, and the suggestions it already showed (so "Next Best Question" does not repeat itself).
 
-const SAVED_LINES = 150; // saved tail merged with the client's lines
+const SAVED_LINES = MAX_TRANSCRIPT_LINES; // the saved call so far, merged with the client's newer lines
 const TIMEOUT_MS = 45_000;
 
 const lineSchema = z.object({
