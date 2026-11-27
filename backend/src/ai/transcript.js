@@ -5,7 +5,7 @@
 // Roughly 800K tokens. Haiku 5.5 has a 1M-token context; beyond this we refuse instead of trimming.
 export const MAX_CONTEXT_CHARS = 2_800_000;
 
-const PLATFORMS = { googlemeet: 'Google Meet', msteams: 'Microsoft Teams', zoom: 'Zoom' };
+const PLATFORMS = { googlemeet: 'Google Meet', msteams: 'Microsoft Teams', zoom: 'Zoom', upwork: 'Upwork' };
 
 export function resolveTimeZone(tz) {
   if (!tz) return 'UTC';

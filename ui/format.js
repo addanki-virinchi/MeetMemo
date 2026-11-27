@@ -1,7 +1,7 @@
 // Shared display helpers for the extension pages (history, transcript, popup).
 // Classic script: defines self.MeetMemoFormat. No network, no storage.
 (() => {
-  const PLATFORMS = { googlemeet: 'Google Meet', msteams: 'Microsoft Teams', zoom: 'Zoom' };
+  const PLATFORMS = { googlemeet: 'Google Meet', msteams: 'Microsoft Teams', zoom: 'Zoom', upwork: 'Upwork' };
 
   // Firestore timestamps arrive as { _seconds } or { seconds } depending on the SDK version.
   function toDate(t) {
@@ -17,7 +17,7 @@
     const platform = PLATFORMS[m?.platform] || 'Meeting';
     const code = m?.meetingCode || '';
     const raw = String(m?.title || '').trim();
-    const generated = !raw || raw === 'Untitled meeting' || /^(Google Meet|Microsoft Teams|Zoom)\s+\S+\s+—\s/.test(raw);
+    const generated = !raw || raw === 'Untitled meeting' || /^(Google Meet|Microsoft Teams|Zoom|Upwork)\s+\S+\s+—\s/.test(raw);
     return { platform, code, title: generated ? (code || 'Untitled meeting') : raw, isCustom: !generated };
   }
 

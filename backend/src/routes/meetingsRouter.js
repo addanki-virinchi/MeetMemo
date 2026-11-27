@@ -14,7 +14,7 @@ export function createMeetingsRouter({ db, FieldValue, FieldPath }) {
 
   const createSchema = z.object({
     title: z.string().trim().max(300).default('Untitled meeting'),
-    platform: z.enum(['googlemeet', 'msteams', 'zoom']),
+    platform: z.enum(['googlemeet', 'msteams', 'zoom', 'upwork']),
     meetingCode: z.string().max(100).optional(),
     language: z.string().max(20).optional(),
     // 2 = segment ids are "m2_" hashes of the source id (sync/segment-id.js). Absent = legacy.

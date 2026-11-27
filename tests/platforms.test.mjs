@@ -84,9 +84,25 @@ test('PLATFORM-01: each platform is recognised and identifies its meeting like t
   assert.match(fallback, /^call-[a-z0-9]+$/);
   assert.equal(P.meetingCode('msteams', loc('https://teams.microsoft.com/v2/'), null, store), fallback, 'stable per tab');
   assert.equal(P.meetingCode('msteams', loc('https://teams.microsoft.com/v2/'), 'x'.repeat(300)).length, 100, 'backend limit');
-  for (const h of ['example.com', 'notzoom.us', 'zoom.us.evil.com', 'teams.microsoft.com.evil.com', 'www.upwork.com']) {
+  for (const h of ['example.com', 'notzoom.us', 'zoom.us.evil.com', 'teams.microsoft.com.evil.com', 'upwork.com.evil.com', 'notupwork.com']) {
     assert.equal(P.platformOf(loc(`https://${h}/wc/81234567890/join`)), null, h);
   }
+});
+
+test('PLATFORM-01: Upwork video calls are identified by their meeting id; other Upwork pages are not meetings', () => {
+  const P = loadPlatforms();
+  const at = (url) => { const l = loc(url); const p = P.platformOf(l); return [p, P.meetingCode(p, l)]; };
+  assert.deepEqual(at('https://www.upwork.com/nx/meeting/UVM_2126402354085493400'), ['upwork', 'UVM_2126402354085493400']);
+  assert.deepEqual(at('https://www.upwork.com/nx/UVM_2126402354085493400'), ['upwork', 'UVM_2126402354085493400']);
+  assert.deepEqual(at('https://www.upwork.com/nx/meeting/abc123XYZ/'), ['upwork', 'abc123XYZ']);
+  assert.deepEqual(at('https://upwork.com/nx/meeting/UVM_42424242'), ['upwork', 'UVM_42424242']);
+  for (const path of ['/nx/find-work/', '/nx/messages/rooms/room_1', '/nx/proposals/', '/nx/meeting/', '/nx/wm/workroom/123', '/ab/account-security']) {
+    assert.deepEqual(at(`https://www.upwork.com${path}`), ['upwork', null], path);
+  }
+  assert.equal(P.NAMES.upwork, 'Upwork');
+  assert.equal(P.linkKey('https://www.upwork.com/nx/meeting/UVM_2126402354085493400'), 'upwork:UVM_2126402354085493400');
+  assert.equal(P.linkKey('https://www.upwork.com/nx/UVM_2126402354085493400?ref=msg'), 'upwork:UVM_2126402354085493400');
+  assert.equal(P.linkKey('https://www.upwork.com/nx/find-work/'), null);
 });
 
 test('PLATFORM-01: host patterns are the bundled panel\'s own (content.js, rtcinjector.js)', () => {

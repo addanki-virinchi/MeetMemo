@@ -65,7 +65,7 @@
     for (const a of accepted.values()) if (a.ts < startedAt) startedAt = a.ts;
     const name = P.NAMES[platform] || 'Meeting';
     const when = new Date(startedAt).toLocaleString();
-    const upwork = upworkCalls.has(`${platform}:${code}`);
+    const upwork = platform === 'upwork' || upworkCalls.has(`${platform}:${code}`);
     // Generated titles ("<Platform> <code> — <date>") are recognised by ui/format.js and shown
     // as the meeting code; a real topic or an Upwork client call is shown as a custom title.
     let title = `${name} ${code} — ${when}`;
