@@ -73,6 +73,28 @@ $('sign-out').addEventListener('click', async () => {
   try { await auth.signOut(); } catch (e) { alert(e?.message || 'Could not sign out.'); } finally { $('sign-out').disabled = false; }
 });
 $('check-server').addEventListener('click', checkServer);
+
+// Zoom web client redirect: a static ruleset (rules/zoom-web-client.json), on by default.
+const ZOOM_RULESET = 'zoom_web_client';
+async function initZoomRedirect() {
+  const box = $('zoom-web-client');
+  const dnr = chrome.declarativeNetRequest;
+  if (!dnr?.getEnabledRulesets) { box.disabled = true; return; }
+  box.checked = (await dnr.getEnabledRulesets()).includes(ZOOM_RULESET);
+  box.addEventListener('change', async () => {
+    box.disabled = true;
+    try {
+      await dnr.updateEnabledRulesets(box.checked ? { enableRulesetIds: [ZOOM_RULESET] } : { disableRulesetIds: [ZOOM_RULESET] });
+      flash(box.checked ? 'Saved. Zoom links will open in the browser.' : 'Saved. Zoom links will open the way Zoom decides (usually the Zoom app).');
+    } catch (e) {
+      box.checked = !box.checked;
+      flash(`Could not change this setting: ${e?.message || e}`);
+    } finally {
+      box.disabled = false;
+    }
+  });
+}
+initZoomRedirect();
 $('api-url').textContent = settings.apiBaseUrl;
 
 auth.onAuthStateChanged((user) => {
@@ -80,7 +102,7 @@ auth.onAuthStateChanged((user) => {
   $('sign-out').hidden = !user;
   $('nav-who').textContent = user ? (user.email || '') : '';
   $('account-name').textContent = user ? (user.displayName || user.email) : 'Not signed in';
-  $('account-email').textContent = user ? (user.displayName ? user.email : 'Signed in') : 'Sign in to save Google Meet transcripts.';
+  $('account-email').textContent = user ? (user.displayName ? user.email : 'Signed in') : 'Sign in to save Google Meet, Zoom and Microsoft Teams transcripts.';
 });
 
 initPreferences();

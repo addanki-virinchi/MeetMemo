@@ -31,6 +31,12 @@
  ],
  "host_permissions": [
   "*://meet.google.com/*-*-*",
+  "*://*.zoom.us/*",
+  "*://teams.microsoft.com/*",
+  "*://teams.live.com/*",
+  "*://teams.cloud.microsoft/*",
+  "*://gov.teams.microsoft.us/*",
+  "*://*.upwork.com/*",
   "https://meetmemo-api.onrender.com/*"
  ],
  "optional_host_permissions": [
@@ -48,6 +54,11 @@
     "id": "block_hosted_meetmemo",
     "enabled": true,
     "path": "rules/block-hosted.json"
+   },
+   {
+    "id": "zoom_web_client",
+    "enabled": true,
+    "path": "rules/zoom-web-client.json"
    }
   ]
  },
@@ -58,7 +69,12 @@
  "content_scripts": [
   {
    "matches": [
-    "*://meet.google.com/*-*-*"
+    "*://meet.google.com/*-*-*",
+    "*://*.zoom.us/*",
+    "*://teams.microsoft.com/*",
+    "*://teams.live.com/*",
+    "*://teams.cloud.microsoft/*",
+    "*://gov.teams.microsoft.us/*"
    ],
    "css": [
     "content.css"
@@ -69,7 +85,12 @@
   },
   {
    "matches": [
-    "*://meet.google.com/*-*-*"
+    "*://meet.google.com/*-*-*",
+    "*://*.zoom.us/*",
+    "*://teams.microsoft.com/*",
+    "*://teams.live.com/*",
+    "*://teams.cloud.microsoft/*",
+    "*://gov.teams.microsoft.us/*"
    ],
    "js": [
     "rtcinjector.js"
@@ -78,7 +99,12 @@
   },
   {
    "matches": [
-    "*://meet.google.com/*-*-*"
+    "*://meet.google.com/*-*-*",
+    "*://*.zoom.us/*",
+    "*://teams.microsoft.com/*",
+    "*://teams.live.com/*",
+    "*://teams.cloud.microsoft/*",
+    "*://gov.teams.microsoft.us/*"
    ],
    "js": [
     "extension-auth/session.js",
@@ -86,11 +112,22 @@
     "extension-auth/links.js",
     "extension-auth/panelPrivacy.js",
     "sync/live-detect.js",
+    "sync/platforms.js",
     "sync/content.js",
     "sync/claude-dock.js",
     "sync/assist-dock.js"
    ],
    "run_at": "document_start"
+  },
+  {
+   "matches": [
+    "*://*.upwork.com/*"
+   ],
+   "js": [
+    "sync/platforms.js",
+    "sync/upwork.js"
+   ],
+   "run_at": "document_idle"
   }
  ],
  "web_accessible_resources": [
@@ -115,7 +152,12 @@
     "privacy.html"
    ],
    "matches": [
-    "*://meet.google.com/*"
+    "*://meet.google.com/*",
+    "*://*.zoom.us/*",
+    "*://teams.microsoft.com/*",
+    "*://teams.live.com/*",
+    "*://teams.cloud.microsoft/*",
+    "*://gov.teams.microsoft.us/*"
    ]
   }
  ],

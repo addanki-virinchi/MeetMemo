@@ -195,9 +195,9 @@ function meetTab(browser, { code = 'abc-defg-hij', sessionId = 'tab-1' } = {}) {
   const handlers = {};
   let interval;
   const ss = new Map();
-  runClassic(['extension-auth/session.js', 'extension-auth/localBridge.js', 'extension-auth/links.js', 'sync/live-detect.js', 'sync/content.js'], {
+  runClassic(['extension-auth/session.js', 'extension-auth/localBridge.js', 'extension-auth/links.js', 'sync/live-detect.js', 'sync/platforms.js', 'sync/content.js'], {
     chrome: browser.chromeFor({ url: `https://meet.google.com/${code}`, tab: { id: 7, index: 2, windowId: 1 } }),
-    location: { pathname: `/${code}` },
+    location: { host: 'meet.google.com', pathname: `/${code}` },
     sessionStorage: { getItem: (k) => ss.get(k) ?? null, setItem: (k, v) => ss.set(k, v) },
     crypto: { randomUUID: () => sessionId, subtle: globalThis.crypto.subtle },
     document: { documentElement: { addEventListener: (n, f) => { handlers[n] = f; } } },

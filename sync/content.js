@@ -1,6 +1,8 @@
-// MeetMemo transcript sync — Google Meet content-script side.
+// MeetMemo transcript sync — meeting-tab content-script side (Google Meet, Zoom web client,
+// Microsoft Teams).
 //
-// The page adapter (googlemeet.inline.js) emits "MeetMemo-message" DOM events that the
+// The page adapters (googlemeet.inline.js, zoom.inline.js, msteams.inline.js, injected by
+// rtcinjector.js) all emit the same "MeetMemo-message" DOM events that the
 // bundled panel (content.js) consumes. This script listens to the same events and hands
 // changed caption lines to the service worker (sync/worker.js), which stores them in a
 // durable queue before acknowledging ("received") and uploads them to the backend.
@@ -16,7 +18,7 @@
 // Classic content script; requires extension-auth/session.js and extension-auth/links.js.
 (() => {
   const PORT_NAME = 'meetmemo-sync';
-  const CODE_RE = /^\/([a-z]{3}-[a-z]{4}-[a-z]{3})(?:$|[/?#])/;
+  const P = self.MeetMemoPlatforms;
   const FLUSH_MS = 1000;
   const MAX_BATCH = 400;
   const MAX_PENDING = 5000; // only reached if the extension worker is unreachable
@@ -36,8 +38,16 @@
   let dropped = 0;
   const drainWaiters = new Set();
 
-  const meetingCode = () => location.pathname.match(CODE_RE)?.[1] ?? null;
+  // Which meeting platform this tab is (null on any other page: then nothing is captured).
+  const platform = P.platformOf(location);
+  // Teams has no meeting id in its URL; its adapter reports one with a 'meeting-id' event.
+  let reportedId = null;
+  // Upwork client calls held on this platform (written by sync/upwork.js), as "platform:code".
+  const upworkCalls = new Set();
+  let heardCaptions = false; // Teams falls back to a per-tab id only once captions arrive
+  const meetingCode = () => P.meetingCode(platform, location, reportedId, heardCaptions ? sessionStorage : null);
   const cap = (map, max) => { while (map.size > max) map.delete(map.keys().next().value); };
+  let meetingTitle = null; // the meeting's own topic/subject, when the adapter reports one
 
   // One backend meeting per tab session; a page reload continues the same meeting.
   function sessionId(code) {
@@ -53,12 +63,29 @@
   function meetingInfo(code) {
     let startedAt = Date.now();
     for (const a of accepted.values()) if (a.ts < startedAt) startedAt = a.ts;
+    const name = P.NAMES[platform] || 'Meeting';
+    const when = new Date(startedAt).toLocaleString();
+    const upwork = upworkCalls.has(`${platform}:${code}`);
+    // Generated titles ("<Platform> <code> — <date>") are recognised by ui/format.js and shown
+    // as the meeting code; a real topic or an Upwork client call is shown as a custom title.
+    let title = `${name} ${code} — ${when}`;
+    if (upwork) title = `Upwork client call${meetingTitle ? `: ${meetingTitle}` : ''} — ${when}`;
+    else if (meetingTitle) title = meetingTitle;
     return {
       sessionId: sessionId(code),
-      platform: 'googlemeet',
+      platform,
       meetingCode: code,
-      title: `Google Meet ${code} — ${new Date(startedAt).toLocaleString()}`,
+      title: title.slice(0, 300),
     };
+  }
+
+  // Upwork calls: sync/upwork.js records the Zoom/Meet links shared in Upwork Messages.
+  if (platform) {
+    const load = (v) => { upworkCalls.clear(); for (const k of Object.keys(v || {})) upworkCalls.add(k); };
+    try {
+      chrome.storage.local.get(P.UPWORK_KEY).then((r) => load(r[P.UPWORK_KEY]), () => {});
+      chrome.storage.onChanged.addListener((c, area) => { if (area === 'local' && P.UPWORK_KEY in c) load(c[P.UPWORK_KEY].newValue); });
+    } catch { /* storage unavailable (extension reloaded) */ }
   }
 
   // The panel's own pause state, read through the bridge exposed by content.js (Fl patch).
@@ -137,7 +164,7 @@
     try {
       port = chrome.runtime.connect({ name: PORT_NAME });
     } catch (err) {
-      stop(`extension was reloaded (${err.message}); refresh the Meet tab`);
+      stop(`extension was reloaded (${err.message}); refresh the meeting tab`);
       return null;
     }
     port.onMessage.addListener(onReply);
@@ -206,6 +233,7 @@
     switch (d.type) {
       case 'speech': {
         if (isPaused()) { detector?.reset(); return; } // the panel drops captions while paused; so do we
+        heardCaptions = true;
         const code = meetingCode();
         if (code !== detectCode) { detector?.reset(); detectCode = code; } // a different meeting
         const msgs = d.messages || [];
@@ -224,6 +252,12 @@
         break;
       case 'premeeting-devices':
         for (const dev of d.devices || []) rememberSpeaker(dev);
+        break;
+      case 'meeting-id': // Microsoft Teams: the call's id (empty when the call ends)
+        reportedId = d.data ? String(d.data) : null;
+        break;
+      case 'title-updated': // Zoom meeting topic / Teams meeting subject
+        if (typeof d.title === 'string' && d.title.trim()) meetingTitle = d.title.trim().slice(0, 200);
         break;
       default:
         break;
@@ -269,7 +303,7 @@
           ? { type: 'meetmemo-open', target: 'transcript', meeting: meetingInfo(code), ...(ask ? { ask: true } : {}) }
           : { type: 'meetmemo-open', target: 'signin' }).catch(() => {});
       } catch (err) {
-        console.warn('[MeetMemo] extension was reloaded; refresh the Meet tab', err);
+        console.warn('[MeetMemo] extension was reloaded; refresh the meeting tab', err);
       }
     },
   };

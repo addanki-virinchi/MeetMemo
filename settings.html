@@ -39,7 +39,7 @@
       <div class="setting-row">
         <div>
           <div class="label" id="account-name">Not signed in</div>
-          <div class="hint" id="account-email">Sign in to save Google Meet transcripts.</div>
+          <div class="hint" id="account-email">Sign in to save Google Meet, Zoom and Microsoft Teams transcripts.</div>
         </div>
         <div>
           <button type="button" class="btn" id="sign-in">Sign in</button>
@@ -48,13 +48,25 @@
       </div>
     </section>
 
+    <section class="card settings-section" aria-labelledby="h-platforms">
+      <h2 id="h-platforms">Meeting platforms</h2>
+      <p>MeetMemo works the same way in <strong>Google Meet</strong>, <strong>Zoom</strong> and <strong>Microsoft Teams</strong> when the meeting runs in this browser: the panel, saved transcripts, Claude and the assist buttons. Upwork client calls held on Zoom or Google Meet are saved as “Upwork client call”.</p>
+      <div class="setting-row">
+        <div>
+          <label class="label" for="zoom-web-client">Open Zoom links in the browser</label>
+          <div class="hint">Zoom only shows captions to MeetMemo in its web client. When this is on, Zoom meeting links (including the ones Upwork posts in Messages) open in the browser instead of the Zoom app.</div>
+        </div>
+        <input type="checkbox" id="zoom-web-client">
+      </div>
+    </section>
+
     <section class="card settings-section" aria-labelledby="h-transcription">
       <h2 id="h-transcription">Transcription language</h2>
-      <p>MeetMemo saves Google Meet's live captions in the language that is being spoken. It does not translate while you record.</p>
+      <p>MeetMemo saves the meeting's live captions (Google Meet, Zoom or Microsoft Teams) in the language that is being spoken. It does not translate while you record.</p>
       <div class="setting-row">
         <div>
           <div class="label">Language of the meeting</div>
-          <div class="hint">Set it during the call: in the MeetMemo panel, select <strong>Change</strong> next to “Transcribing: …”. This switches Google Meet's caption language, so pick the language people are actually speaking. Google Meet supports many languages, including English, Spanish, French, German, Portuguese, Hindi, Japanese and Korean.</div>
+          <div class="hint">Set it during the call: in the MeetMemo panel, select <strong>Change</strong> next to “Transcribing: …”. This switches the meeting's caption language, so pick the language people are actually speaking. In Zoom and Teams the caption language can also be set from the meeting's own captions menu.</div>
         </div>
         <a class="btn" href="help.html#languages">Learn more</a>
       </div>

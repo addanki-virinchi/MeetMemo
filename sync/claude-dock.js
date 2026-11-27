@@ -1,4 +1,4 @@
-// Claude in the Google Meet panel — content-script side (classic; loaded after sync/content.js).
+// Claude in the meeting panel (Meet, Zoom, Teams) — content-script side (classic; loaded after sync/content.js).
 //
 // The bundled panel (content.js) renders two empty placeholders:
 //   [data-meetmemo-claude-toggle]  beside the "Claude" tab: the on/off switch

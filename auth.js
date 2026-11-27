@@ -155,7 +155,7 @@ function renderStatus(rawStatus) {
   const meetings = status ? Object.values(status.meetings || {}).sort((a, b) => b.at - a.at) : [];
   if (!meetings.length) {
     const p = document.createElement('p');
-    p.textContent = 'Join a Google Meet call and turn on captions; lines are saved every few seconds.';
+    p.textContent = 'Join a Google Meet, Zoom or Microsoft Teams meeting in the browser and turn on captions; lines are saved every few seconds.';
     el.append(p);
     return;
   }

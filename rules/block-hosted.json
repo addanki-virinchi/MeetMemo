@@ -31,6 +31,7 @@
     "meet.google.com",
     "teams.microsoft.com",
     "teams.live.com",
+    "teams.cloud.microsoft",
     "zoom.us"
    ],
    "resourceTypes": ["xmlhttprequest", "ping", "script", "image", "other"]

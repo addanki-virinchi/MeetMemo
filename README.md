@@ -46,11 +46,12 @@ Run it:
 2. Chrome → `chrome://extensions` → Developer mode → **Load unpacked** → this folder.
    The extension id must be `gnolicpkknhchlmmfgamghnjcbmpndlf` (it matches `ALLOWED_ORIGINS`).
 3. Click the toolbar icon → **Create account** (any email, password ≥ 8 characters).
-4. Join a Google Meet call, open the MeetMemo panel and let captions run. Each line is saved
-   within a few seconds; the popup shows "Saving (abc-defg-hij)…".
+4. Join a Google Meet, Zoom (web client) or Microsoft Teams meeting in Chrome, open the MeetMemo
+   panel and let captions run. Each line is saved within a few seconds; the popup shows
+   "Saving (abc-defg-hij)…" (the Zoom meeting number / Teams call id on those platforms).
 5. Popup → **Recent meetings** → open the meeting to see the saved transcript.
 
-After editing extension files, press **Reload** on `chrome://extensions` and refresh the Meet tab.
+After editing extension files, press **Reload** on `chrome://extensions` and refresh the meeting tab.
 
 ### Accounts and sessions
 
@@ -82,7 +83,34 @@ After editing extension files, press **Reload** on `chrome://extensions` and ref
 * As a safety net, the static ruleset `rules/block-hosted.json` blocks every request to
   `meetmemo.io` and its subdomains, including page navigations.
 
-### Local sync (Google Meet only, chat excluded)
+### Meeting platforms: Google Meet, Zoom, Microsoft Teams (+ Upwork client calls)
+
+The bundled panel (`content.js`) and its page adapters (`googlemeet.inline.js`, `zoom.inline.js`,
+`msteams.inline.js`, injected by `rtcinjector.js`) always supported all three platforms. In the
+original build they reached Zoom and Teams only after the user granted the optional `<all_urls>`
+permission during the hosted onboarding, when `webext-dynamic-content-scripts` re-registered the
+manifest's content scripts on every site. This build has no hosted onboarding, so that grant never
+happened, and the local sync layer only understood Google Meet URLs. Now:
+
+* `manifest.json` lists the Meet, Zoom (`*.zoom.us`) and Teams (`teams.microsoft.com`,
+  `teams.live.com`, `teams.cloud.microsoft`, `gov.teams.microsoft.us`) hosts for the panel, the
+  adapter injector and the sync layer, with the same host patterns the bundle uses.
+* `sync/platforms.js` identifies the meeting per platform: the Meet code, the Zoom web-client
+  meeting number (`/wc/<number>/…`), or the Teams call id reported by `msteams.inline.js`
+  (`meeting-id` event; a per-tab id if captions arrive first). Saved meetings carry
+  `platform: googlemeet | zoom | msteams`, and a topic/subject reported by the adapter
+  (`title-updated`) becomes the title. Claude and the assist buttons follow automatically.
+* Zoom shows captions to the extension only in its web client. `rules/zoom-web-client.json`
+  redirects `zoom.us/j|s|w/<n>` links to `/wc/<n>/join|start` (previously gated on a hosted
+  account setting that never gets set). It is on by default; **Settings → Meeting platforms**
+  turns it off.
+* Upwork: client calls started from Upwork Messages run on Zoom (or a shared Meet link) and are
+  captured by those adapters. `sync/upwork.js` (upwork.com only) records which Zoom/Meet links
+  were shared there (just `platform:code` keys, 14 days, at most 200), so those meetings are
+  titled "Upwork client call". Upwork's own built-in video meetings are not captured: they expose
+  no caption stream, and MeetMemo never records audio.
+
+### Local sync (chat excluded)
 
 * Each caption id's highest accepted revision is remembered. Older revisions are ignored; an
   equal revision with identical text is a duplicate; an equal revision with new text is

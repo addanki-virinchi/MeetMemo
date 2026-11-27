@@ -253,9 +253,9 @@ test('SHARE-01: Share waits for durable receipt of pending lines before opening'
   });
   const handlers = {};
   const ss = new Map();
-  const ctx = runClassic(['extension-auth/session.js', 'extension-auth/localBridge.js', 'extension-auth/links.js', 'sync/content.js'], {
+  const ctx = runClassic(['extension-auth/session.js', 'extension-auth/localBridge.js', 'extension-auth/links.js', 'sync/platforms.js', 'sync/content.js'], {
     chrome: browser.chromeFor({ url: 'https://meet.google.com/abc-defg-hij', tab: { id: 1, index: 0 } }),
-    location: { pathname: '/abc-defg-hij' },
+    location: { host: 'meet.google.com', pathname: '/abc-defg-hij' },
     sessionStorage: { getItem: (k) => ss.get(k) ?? null, setItem: (k, v) => ss.set(k, v) },
     document: { documentElement: { addEventListener: (n, f) => { handlers[n] = f; } } },
     addEventListener: (n, f) => { handlers[n] = f; },
@@ -369,10 +369,10 @@ test('ROUTE-01: bundle bridge anchors are present exactly once', () => {
   once(background, 'await chrome.tabs.create({url:chrome.runtime.getURL("auth.html")})');
   const manifest = JSON.parse(read('manifest.json'));
   const sync = manifest.content_scripts.find((c) => c.js.includes('sync/content.js'));
-  assert.deepEqual(sync.js, ['extension-auth/session.js', 'extension-auth/localBridge.js', 'extension-auth/links.js', 'extension-auth/panelPrivacy.js', 'sync/live-detect.js', 'sync/content.js', 'sync/claude-dock.js']);
+  assert.deepEqual(sync.js, ['extension-auth/session.js', 'extension-auth/localBridge.js', 'extension-auth/links.js', 'extension-auth/panelPrivacy.js', 'sync/live-detect.js', 'sync/platforms.js', 'sync/content.js', 'sync/claude-dock.js', 'sync/assist-dock.js']);
   // The Claude tab, its switch and the answer feed live in the panel's tab bar (sync/claude-dock.js).
   once(content, 'vi.default.createElement("span",{"data-meetmemo-claude-toggle":"",className:"flex shrink-0 items-center"})');
-  once(content, 'vi.default.createElement("div",{"data-meetmemo-claude-feed":""})');
+  once(content, 'Iv.default.createElement("div",{"data-meetmemo-claude-feed":""})');
   assert.equal(content.split('defaultMessage:"Claude"').length - 1, 3, 'tab, minimised button and its tooltip say Claude');
   assert.equal(content.split('MeetMemo AI').length - 1, 0, 'no outdated assistant name left in the panel');
   // Privacy popover and "Notify in chat" no longer point at the old hosted domain.
@@ -381,8 +381,10 @@ test('ROUTE-01: bundle bridge anchors are present exactly once', () => {
   const war = manifest.web_accessible_resources.find((w) => w.resources.includes('auth.html'));
   for (const p of ['history.html', 'settings.html', 'help.html', 'privacy.html']) assert.ok(war.resources.includes(p), p);
   assert.match(read('options.html'), /extension-auth\/links\.js"><\/script>\s*<script src="\/options\.js">/);
-  // Only the Render API is a host permission; hosted MeetMemo hosts are blocked, never allowed.
-  const apiHosts = manifest.host_permissions.filter((h) => !h.includes('meet.google.com'));
+  // Besides the meeting platforms (and Upwork), only the Render API is a host permission;
+  // hosted MeetMemo hosts are blocked, never allowed.
+  const PLATFORM_HOST = /meet\.google\.com|zoom\.us|teams\.|upwork\.com/;
+  const apiHosts = manifest.host_permissions.filter((h) => !PLATFORM_HOST.test(h));
   assert.deepEqual(apiHosts, ['https://meetmemo-api.onrender.com/*']);
   assert.ok(!JSON.stringify(manifest.externally_connectable).toLowerCase().includes('meetmemo.io'));
   const ruleset = manifest.declarative_net_request.rule_resources.find((r) => r.id === 'block_hosted_meetmemo');

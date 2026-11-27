@@ -11,7 +11,7 @@
     return Number.isNaN(d.getTime()) ? null : d;
   }
 
-  // Meetings saved by sync/content.js are titled "Google Meet abc-defg-hij — <date>".
+  // Meetings saved by sync/content.js are titled "<Platform> <code> — <date>" (e.g. "Zoom 81234567890 — …").
   // Show the meeting code as the heading in that case, and a custom title otherwise.
   function meetingHeading(m) {
     const platform = PLATFORMS[m?.platform] || 'Meeting';
