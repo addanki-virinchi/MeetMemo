@@ -267,3 +267,21 @@ test('ASSIST-PRIORITY: transcript first, documents second, general knowledge thi
   assert.ok(text.includes('Copilot Pack'), 'the prep is included');
   assert.match(text, /first what the conversation tells you.*then the documents.*then general knowledge/s);
 });
+
+test('ASSIST-VOICE: replies are the words the user speaks, in the first person, never coaching', async () => {
+  const { LIVE_SYSTEM } = await import('../src/ai/live.js');
+  assert.match(ASSIST_SYSTEM, /exact words the user will say next/);
+  assert.match(ASSIST_SYSTEM, /in the first person/);
+  assert.match(ASSIST_SYSTEM, /Never write "You could say"/);
+  assert.match(ASSIST_SYSTEM, /Wrong: "You could explain[\s\S]*Right: "Based on what we discussed earlier/);
+  assert.match(ASSIST_SYSTEM, /next turn in it, not as an answer to the latest line alone/);
+  assert.match(LIVE_SYSTEM, /exact words the user says out loud/);
+  assert.match(LIVE_SYSTEM, /Never coach or describe the reply/);
+
+  script = { parsed: { found: true, question: 'Can you start in January?', text: 'Yes, January works for us.' } };
+  const id = await meeting('V1', [{ id: 'm2_v1', speaker: 'Jane (Acme)', text: 'can you start in january', ts: T0 }]);
+  const r = await call('V1', 'POST', `/v1/meetings/${id}/ai/assist`, { action: 'answer' });
+  assert.equal(r.status, 200, JSON.stringify(r.body));
+  const text = userText(calls[0]);
+  assert.match(text, /exact words the user says now to answer it, in the first person/);
+});
